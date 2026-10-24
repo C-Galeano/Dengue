@@ -1,8 +1,8 @@
-"""Dashboard de pronóstico semanal de dengue (Streamlit) para desplegar en Render.
+"""Weekly dengue forecasting dashboard (Streamlit), deployed on Render.
 
-Pestaña "Estructura del proyecto": muestra docs/estructura_proyecto.md.
-Pestaña "Pronóstico": sin datos cargados usa una serie sintética de demostración. Con un
-CSV (columnas `semana`, `casos`) se calcula el modelo base y el error en las últimas semanas.
+Tab "Project structure": shows docs/estructura_proyecto.md.
+Tab "Forecast": without uploaded data it uses a synthetic demo series. With a
+CSV (columns `semana`, `casos`) it computes the baseline and its error on the latest weeks.
 """
 from pathlib import Path
 
@@ -12,9 +12,9 @@ import streamlit as st
 
 DOC = Path(__file__).parent / "docs" / "estructura_proyecto.md"
 
-st.set_page_config(page_title="Pronóstico de dengue", page_icon="🦟", layout="wide")
-st.title("Pronóstico semanal de casos de dengue en Colombia")
-st.caption("Proyecto final de Machine Learning · SIVIGILA (datos.gov.co) + clima IDEAM")
+st.set_page_config(page_title="Dengue forecasting", page_icon="🦟", layout="wide")
+st.title("Weekly Dengue Case Forecasting in Colombia")
+st.caption("Machine Learning final project · SIVIGILA (datos.gov.co) + clima IDEAM")
 
 
 @st.cache_data
@@ -25,32 +25,32 @@ def demo_series(weeks: int = 156) -> pd.DataFrame:
     return pd.DataFrame({"semana": t + 1, "casos": np.clip(casos, 0, None).round()})
 
 
-tab_proyecto, tab_pronostico = st.tabs(["Estructura del proyecto", "Pronóstico"])
+tab_proyecto, tab_pronostico = st.tabs(["Project structure", "Forecast"])
 
 with tab_proyecto:
     st.markdown(DOC.read_text(encoding="utf-8"))
 
 with tab_pronostico:
-    archivo = st.file_uploader("CSV con columnas `semana` y `casos`", type="csv")
-    test_weeks = st.slider("Semanas de prueba (partición temporal)", 8, 52, 26)
+    archivo = st.file_uploader("CSV with columns `semana` and `casos`", type="csv")
+    test_weeks = st.slider("Test weeks (time-based split)", 8, 52, 26)
 
     df = pd.read_csv(archivo) if archivo else demo_series()
     if not archivo:
-        st.info("Mostrando datos sintéticos de demostración. Sube un CSV para usar datos reales.")
+        st.info("Showing synthetic demo data. Upload a CSV to use real data.")
 
     train, test = df.iloc[:-test_weeks], df.iloc[-test_weeks:]
 
-    # Modelo base: la semana siguiente = la semana actual.
+    # Baseline: next week = this week.
     pred = df["casos"].shift(1).iloc[-test_weeks:]
     mae = (test["casos"] - pred).abs().mean()
     rmse = float(np.sqrt(((test["casos"] - pred) ** 2).mean()))
 
     c1, c2 = st.columns(2)
-    c1.metric("MAE (modelo base)", f"{mae:.1f} casos")
-    c2.metric("RMSE (modelo base)", f"{rmse:.1f} casos")
+    c1.metric("MAE (baseline)", f"{mae:.1f} cases")
+    c2.metric("RMSE (baseline)", f"{rmse:.1f} cases")
 
-    chart = df.set_index("semana")[["casos"]].rename(columns={"casos": "Real"})
-    chart["Predicho (base)"] = np.nan
-    chart.loc[test["semana"].values, "Predicho (base)"] = pred.values
+    chart = df.set_index("semana")[["casos"]].rename(columns={"casos": "Actual"})
+    chart["Predicted (baseline)"] = np.nan
+    chart.loc[test["semana"].values, "Predicted (baseline)"] = pred.values
     st.line_chart(chart)
-    st.caption(f"Entrenamiento: {len(train)} semanas · Prueba: {len(test)} semanas (últimas).")
+    st.caption(f"Train: {len(train)} weeks · Test: {len(test)} weeks (latest).")

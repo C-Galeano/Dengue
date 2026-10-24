@@ -1,88 +1,88 @@
-# ESTRUCTURA DEL PROYECTO
+# PROJECT STRUCTURE
 
-## TÍTULO DEL PROYECTO
+## PROJECT TITLE
 
-Pronóstico semanal de casos de dengue en Colombia mediante aprendizaje automático (Weekly Dengue Case Forecasting in Colombia)
+Weekly Dengue Case Forecasting in Colombia Using Machine Learning
 
-## PLANTEAMIENTO DEL PROBLEMA Y JUSTIFICACIÓN
+## PROBLEM STATEMENT AND JUSTIFICATION
 
-El dengue es uno de los problemas de salud pública más relevantes de Colombia: los brotes regresan año tras año, saturan hospitales y servicios de salud, sobre todo en municipios cálidos y de baja altitud. Hoy la respuesta es **reactiva**: los casos se cuentan cuando ya ocurrieron, los recursos llegan cuando el pico ya comenzó y las campañas de prevención se lanzan tarde, cuando el brote es mucho más difícil de contener.
+Dengue is one of Colombia's most pressing public health problems: outbreaks return year after year and overwhelm hospitals and health services, especially in warm, low-altitude municipalities. Today the response is **reactive**: cases are counted after they happen, resources arrive once the peak has started, and prevention campaigns are launched late, when the outbreak is much harder to contain.
 
-**Pregunta de investigación:** ¿es posible anticipar con algunas semanas de antelación el número de casos semanales de dengue a partir de los registros históricos del SIVIGILA y de variables climáticas (precipitación y temperatura del IDEAM)?
+**Research question:** can we anticipate, several weeks ahead, the number of weekly dengue cases using historical SIVIGILA records and climate variables (rainfall and temperature from IDEAM)?
 
-**Justificación:** un pronóstico semanal permite planificar personal, camas e insumos y activar el control vectorial y la prevención a tiempo. Los datos son abiertos (datos.gov.co), el clima influye directamente en la reproducción del mosquito y en la transmisión, y las técnicas de series de tiempo y aprendizaje automático permiten convertir esos registros en una herramienta de alerta temprana sencilla y reproducible.
+**Justification:** a weekly forecast makes it possible to plan staff, beds and supplies in advance and to launch vector control and prevention in time. The data are open (datos.gov.co), weather directly drives mosquito reproduction and transmission, and time-series and machine learning techniques can turn these records into a simple, reproducible early-warning tool.
 
-## OBJETIVOS DEL PROYECTO
+## PROJECT OBJECTIVES
 
-### OBJETIVO GENERAL
+### GENERAL OBJECTIVE
 
-Desarrollar y comparar modelos de aprendizaje automático y series de tiempo que pronostiquen los casos semanales de dengue en municipios de Colombia, y ponerlos a disposición en un tablero web de alerta temprana.
+Develop and compare machine learning and time-series models that forecast weekly dengue cases in Colombian municipalities, and make them available through an early-warning web dashboard.
 
-### OBJETIVOS ESPECÍFICOS
+### SPECIFIC OBJECTIVES
 
-1. Descargar, limpiar y unificar los registros de dengue del SIVIGILA (datos.gov.co) de municipios como Bucaramanga, Tuluá y Pereira, alineando columnas entre fuentes.
-2. Construir la serie semanal (por semana epidemiológica y comuna) y agregar variables rezagadas de casos, precipitación y temperatura (IDEAM).
-3. Entrenar y comparar un modelo base, ARIMA, Prophet y modelos de ML con rezagos (Random Forest / XGBoost), exigiendo que superen al modelo base.
-4. Evaluar con partición temporal (entrenamiento: semanas anteriores; prueba: últimas semanas) usando MAE, RMSE, detección de picos y gráficos real vs. predicho.
-5. Identificar qué rezagos climáticos son más informativos y desplegar un tablero web (Render) que muestre pronósticos y alertas.
+1. Download, clean and unify dengue case records from SIVIGILA (datos.gov.co) for municipalities such as Bucaramanga, Tuluá and Pereira, aligning columns across sources.
+2. Build the weekly series (per epidemiological week and commune) and add lagged features for cases, rainfall and temperature (IDEAM).
+3. Train and compare a baseline, ARIMA, Prophet and lag-based ML models (Random Forest / XGBoost), requiring every model to beat the baseline.
+4. Evaluate with a time-based split (train: earlier weeks; test: latest weeks) using MAE, RMSE, peak detection and real vs. predicted plots.
+5. Identify which climate lags matter most and deploy a web dashboard (Render) showing forecasts and alerts.
 
-## MARCO REFERENCIAL (Opcional)
+## REFERENCE FRAMEWORK (Optional)
 
-- **Epidemiológico:** dengue como enfermedad transmitida por vectores (*Aedes aegypti*); vigilancia en salud pública con SIVIGILA (INS) y semanas epidemiológicas.
-- **Climático:** la lluvia y la temperatura afectan el ciclo del mosquito; sus efectos aparecen con retraso (p. ej., la lluvia de hace 3 semanas puede explicar los casos de hoy).
-- **Técnico:** series de tiempo (ARIMA, Prophet), aprendizaje supervisado con rezagos (Random Forest, XGBoost), validación temporal y métricas MAE/RMSE.
-- **Datos:** datos.gov.co (SIVIGILA, conjuntos municipales) e IDEAM (datos diarios por estación).
+- **Epidemiological:** dengue as a vector-borne disease (*Aedes aegypti*); public health surveillance with SIVIGILA (INS) and epidemiological weeks.
+- **Climate:** rainfall and temperature affect the mosquito life cycle; their effects appear with a delay (e.g., rainfall from 3 weeks ago can explain today's cases).
+- **Technical:** time series (ARIMA, Prophet), supervised learning with lags (Random Forest, XGBoost), time-based validation and MAE/RMSE metrics.
+- **Data:** datos.gov.co (SIVIGILA, municipal datasets) and IDEAM (daily data per station).
 
-## METODOLOGÍA A UTILIZAR Y CRONOGRAMA DE DESARROLLO
+## METHODOLOGY AND DEVELOPMENT TIMELINE
 
-**Metodología**
+**Methodology**
 
-1. **Datos:** descarga vía API Socrata, estandarización de columnas por municipio y conversión del clima diario a semanas epidemiológicas.
-2. **Series y características:** conteo de casos por semana (y comuna) y variables de rezago de casos, lluvia y temperatura.
-3. **Modelado:** modelo base (semana siguiente = semana actual o promedio histórico de esa semana), ARIMA, Prophet y Random Forest/XGBoost.
-4. **Evaluación:** partición por tiempo (nunca aleatoria) para evitar resultados optimistas; MAE, RMSE, detección de picos y gráficos real vs. predicho.
-5. **Entrega:** tablero web desplegado en Render, con código reproducible (`src/dengue`, pruebas con `pytest`).
+1. **Data:** download through the Socrata API, column standardization per municipality, and conversion of daily climate data to epidemiological weeks.
+2. **Series and features:** case counts per week (and commune) and lagged variables for cases, rainfall and temperature.
+3. **Modeling:** baseline (next week = this week, or the historical average for that week), ARIMA, Prophet and Random Forest/XGBoost.
+4. **Evaluation:** time-based split (never random) to avoid optimistic results; MAE, RMSE, peak detection and real vs. predicted plots.
+5. **Delivery:** web dashboard deployed on Render, with reproducible code (`src/dengue`, tests with `pytest`).
 
-**Cronograma (16 semanas)**
+**Timeline (16 weeks)**
 
-| Semanas | Actividad |
-|---------|-----------|
-| 1–3 | Descarga y limpieza de los conjuntos de datos |
-| 4–6 | Construcción de la serie semanal y variables de rezago |
-| 7–11 | Entrenamiento y comparación de modelos |
-| 12–14 | Evaluación, análisis de rezagos climáticos y de picos |
-| 15–16 | Tablero web en Render, documento síntesis y presentación final |
+| Weeks | Activity |
+|-------|----------|
+| 1–3 | Download and clean the datasets |
+| 4–6 | Build the weekly series and lag features |
+| 7–11 | Train and compare models |
+| 12–14 | Evaluation, analysis of climate lags and peaks |
+| 15–16 | Web dashboard on Render, synthesis document and final presentation |
 
-**Riesgos:** series cortas (poco historial estacional), formatos distintos entre municipios, unión de clima diario por estación con semanas epidemiológicas, y validación cuidadosa para no sobreestimar el desempeño.
+**Risks:** short series (little seasonal history), different formats across municipalities, joining daily per-station climate data with epidemiological weeks, and careful validation to avoid overestimating performance.
 
-## REFERENCIAS BIBLIOGRÁFICAS (opcional)
+## BIBLIOGRAPHIC REFERENCES (optional)
 
 - Instituto Nacional de Salud. *Sistema de Vigilancia en Salud Pública – SIVIGILA*. Colombia.
-- Datos Abiertos Colombia (datos.gov.co). Conjuntos de datos de vigilancia de dengue.
-- IDEAM. Datos hidrometeorológicos (precipitación y temperatura).
-- Hyndman, R. J., & Athanasopoulos, G. *Forecasting: Principles and Practice* (3.ª ed.). OTexts.
+- Datos Abiertos Colombia (datos.gov.co). Dengue surveillance datasets.
+- IDEAM. Hydrometeorological data (rainfall and temperature).
+- Hyndman, R. J., & Athanasopoulos, G. *Forecasting: Principles and Practice* (3rd ed.). OTexts.
 - Taylor, S. J., & Letham, B. (2018). Forecasting at scale. *The American Statistician*, 72(1).
 - Breiman, L. (2001). Random Forests. *Machine Learning*, 45(1).
 - Chen, T., & Guestrin, C. (2016). XGBoost: A scalable tree boosting system. *KDD '16*.
 
 ---
 
-## PRODUCTOS ESPERADOS (marque con una X)
+## EXPECTED PRODUCTS (mark with an X)
 
-| X | Producto |
-|---|----------|
-| X | Documento síntesis de PGC |
+| X | Product |
+|---|---------|
+| X | PGC synthesis document |
 | X | Software |
-|   | Sistema de información |
-| X | Prototipo |
-|   | Artículo científico |
-|   | Póster- Ponencia |
-|   | Comunidad de práctica y redes de conocimiento |
-|   | Evento científico o académico |
-|   | Ediciones de revista o libro de divulgación |
-|   | Producción de contenidos digitales |
-|   | Publicaciones editoriales no especializadas |
-| X | Desarrollo Web |
-|   | Creación de cursos |
-|   | Emprendimiento e innovación |
-|   | Otro ¿Cuál? |
+|   | Information system |
+| X | Prototype |
+|   | Scientific article |
+|   | Poster / Presentation |
+|   | Community of practice and knowledge networks |
+|   | Scientific or academic event |
+|   | Journal editions or outreach book |
+|   | Digital content production |
+|   | Non-specialized editorial publications |
+| X | Web development |
+|   | Course creation |
+|   | Entrepreneurship and innovation |
+|   | Other. Which? |
