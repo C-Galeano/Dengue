@@ -1,5 +1,5 @@
-# Dependencias de la aplicación web (lo que instala Render).
-# Versiones fijas: el modelo .pkl debe cargarse con la MISMA versión de scikit-learn con que se entrenó.
+# Web application dependencies (what Render installs).
+# Pinned versions: the .pkl model must be loaded with the SAME scikit-learn version it was trained with.
 flask==3.1.3
 flask-sqlalchemy==3.1.1
 gunicorn==26.2.0

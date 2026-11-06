@@ -1,43 +1,50 @@
+{% from "_icons.html" import icon %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titulo %}Dengue{% endblock %} · Academic Project</title>
+  <meta name="theme-color" content="#c8372d">
+  <title>{% block title %}Dengue{% endblock %} · Academic Project</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="{{ url_for('static', filename='estilos.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
 </head>
 <body class="d-flex flex-column min-vh-100">
-  <div class="aviso text-center small fw-semibold py-2 px-3" role="alert">
-    ⚠️ Academic project. It does not replace medical diagnosis.
+  <div class="notice text-center py-2 px-3" role="note">
+    Academic project · It does not replace medical diagnosis.
   </div>
 
-  <nav class="navbar navbar-expand-md navbar-dark bg-marca">
+  <nav class="navbar navbar-expand-md site-nav">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}">🦟 Dengue</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu"
+      <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('home') }}">
+        <span class="brand-mark">{{ icon("drop") }}</span> Dengue
+      </a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#menu"
               aria-controls="menu" aria-expanded="false" aria-label="Open menu">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="menu">
-        <ul class="navbar-nav ms-auto">
-          {% set ruta = request.endpoint %}
-          <li class="nav-item"><a class="nav-link {{ 'active' if ruta == 'inicio' }}" href="{{ url_for('inicio') }}">Home</a></li>
-          <li class="nav-item"><a class="nav-link {{ 'active' if ruta == 'registro' }}" href="{{ url_for('registro') }}">Register patient</a></li>
-          <li class="nav-item"><a class="nav-link {{ 'active' if ruta == 'pacientes' }}" href="{{ url_for('pacientes') }}">Patients</a></li>
-          <li class="nav-item"><a class="nav-link {{ 'active' if ruta == 'acerca' }}" href="{{ url_for('acerca') }}">About the model</a></li>
+        <ul class="navbar-nav ms-auto gap-md-1 pt-2 pt-md-0">
+          {% set current = request.endpoint %}
+          <li class="nav-item"><a class="nav-link {{ 'active' if current == 'home' }}" href="{{ url_for('home') }}">Home</a></li>
+          <li class="nav-item"><a class="nav-link {{ 'active' if current in ('register', 'result') }}" href="{{ url_for('register') }}">Register patient</a></li>
+          <li class="nav-item"><a class="nav-link {{ 'active' if current == 'patients' }}" href="{{ url_for('patients') }}">Patients</a></li>
+          <li class="nav-item"><a class="nav-link {{ 'active' if current == 'about' }}" href="{{ url_for('about') }}">About the model</a></li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <main class="container my-4 flex-grow-1">
-    {% block contenido %}{% endblock %}
+  <main class="container my-4 my-md-5 flex-grow-1">
+    {% block content %}{% endblock %}
   </main>
 
-  <footer class="border-top py-3 small text-muted">
-    <div class="container d-flex flex-column flex-md-row justify-content-between gap-1">
-      <span><strong>Academic project. It does not replace medical diagnosis.</strong> If you experience symptoms, consult a healthcare professional.</span>
+  <footer class="site-footer py-4 small">
+    <div class="container d-flex flex-column flex-md-row justify-content-between gap-2">
+      <span><strong class="text-body">Academic project. It does not replace medical diagnosis.</strong> If you experience symptoms, consult a healthcare professional.</span>
       <span>Data: SIVIGILA Tuluá · datos.gov.co</span>
     </div>
   </footer>

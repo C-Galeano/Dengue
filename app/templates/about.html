@@ -1,108 +1,113 @@
 {% extends "base.html" %}
-{% block titulo %}About the model{% endblock %}
-{% block contenido %}
-{% set t = info.metricas_test %}
-{% set mc = t.matriz_confusion %}
-<h1 class="h3">About the model</h1>
-<p class="text-muted">Classifier trained with dengue cases reported to SIVIGILA in Tuluá (Valle del Cauca), 2023–2026.</p>
+{% block title %}About the model{% endblock %}
+{% block content %}
+{% set t = info.test_metrics %}
+{% set cm = t.confusion_matrix %}
+{% set threshold_pct = (info.threshold * 100)|round|int %}
+<h1 class="h2 mb-1">About the model</h1>
+<p class="text-muted mb-4">Classifier trained with dengue cases reported to SIVIGILA in Tuluá (Valle del Cauca), 2023–2026.</p>
 
 <div class="row g-3 mb-4">
-  {% for etiqueta, valor in [("Model", info.nombre_modelo),
-                             ("Training cases", "{:,}".format(info.datos.n_total).replace(",", ".")),
-                             ("ROC-AUC (test)", "%.2f" % t.roc_auc),
-                             ("Dengue recall (test)", "%.0f %%" % (t.recall * 100))] %}
+  {% for label, value in [("Model", info.model_name),
+                          ("Training cases", "{:,}".format(info.data.n_total)),
+                          ("ROC-AUC (test)", "%.2f" % t.roc_auc),
+                          ("Dengue recall (test)", "%.0f%%" % (t.recall * 100))] %}
   <div class="col-6 col-lg-3">
-    <div class="card shadow-sm h-100"><div class="card-body">
-      <div class="small text-muted">{{ etiqueta }}</div>
-      <div class="fs-4 fw-bold">{{ valor }}</div>
-    </div></div>
+    <div class="card stat h-100">
+      <div class="label">{{ label }}</div>
+      <div class="value">{{ value }}</div>
+    </div>
   </div>
   {% endfor %}
 </div>
 
 <div class="row g-4">
   <div class="col-lg-6">
-    <h2 class="h5">What does it predict?</h2>
-    <p>Among patients <strong>with fever</strong> reported as suspected dengue cases, it estimates the probability that the case
-      is <strong>confirmed dengue</strong> (by laboratory testing or epidemiological link) and not a <strong>discarded</strong> case.</p>
-    <ul class="small">
-      <li><strong>Inputs:</strong> age group, sex, and {{ NOMBRES_SINTOMAS|length }} symptoms that the patient can report.</li>
-      <li><strong>Excluded:</strong> fever (present in 100% of cases), laboratory tests, and variables
-        known after diagnosis (shock, organ damage, hospitalization…), to avoid data leakage.</li>
-      <li><strong>Data:</strong> {{ "{:,}".format(info.datos.n_total).replace(",", ".") }} cases,
-        {{ '%.0f' % (info.datos.prevalencia_dengue * 100) }} % confirmed dengue. Source: {{ info.datos.fuente }}.</li>
-      <li><strong>Decision threshold: {{ (info.umbral * 100)|round|int }} %</strong>. It was selected to detect at least
-        {{ (info.recall_objetivo * 100)|int }} % of dengue cases: in screening, missing a dengue case is more serious than a false alarm.</li>
-    </ul>
+    <div class="card h-100"><div class="card-body p-4">
+      <h2 class="h5">What does it predict?</h2>
+      <p>Among patients <strong>with fever</strong> reported as suspected dengue cases, it estimates the probability that the case
+        is <strong>confirmed dengue</strong> (by laboratory testing or epidemiological link) and not a <strong>discarded</strong> case.</p>
+      <ul class="small">
+        <li><strong>Inputs:</strong> age group, sex, and {{ SYMPTOM_LABELS|length }} symptoms that the patient can report.</li>
+        <li><strong>Excluded:</strong> fever (present in 100% of cases), laboratory tests, and variables
+          known after diagnosis (shock, organ damage, hospitalization…), to avoid data leakage.</li>
+        <li><strong>Data:</strong> {{ "{:,}".format(info.data.n_total) }} cases,
+          {{ '%.0f' % (info.data.dengue_prevalence * 100) }}% confirmed dengue. Source: {{ info.data.source }}.</li>
+        <li><strong>Decision threshold: {{ threshold_pct }}%</strong>. It was selected to detect at least
+          {{ (info.target_recall * 100)|int }}% of dengue cases: in screening, missing a dengue case is more serious than a false alarm.</li>
+      </ul>
 
-    <h2 class="h5 mt-4">Results on test data</h2>
-    <p class="small text-muted">20 % of the cases, reserved and never used for training ({{ "{:,}".format(info.datos.n_test).replace(",", ".") }} cases).</p>
-    <table class="table table-sm">
-      <thead><tr><th>Metric</th><th class="text-end">Threshold {{ (info.umbral * 100)|round|int }} %</th><th class="text-end">Threshold 50 %</th></tr></thead>
-      <tbody>
-        {% for clave, nombre in [("accuracy", "Accuracy"), ("precision", "Precision"), ("recall", "Sensitivity / recall (dengue)"),
-                                 ("especificidad", "Specificity"), ("f1", "F1"), ("roc_auc", "ROC-AUC")] %}
-        <tr><td>{{ nombre }}</td><td class="text-end fw-semibold">{{ '%.3f' % t[clave] }}</td>
-            <td class="text-end text-muted">{{ '%.3f' % info.metricas_test_umbral_05[clave] }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    <h2 class="h6 mt-3">Confusion matrix (threshold {{ (info.umbral * 100)|round|int }} %)</h2>
-    <table class="table table-bordered text-center matriz small">
-      <thead><tr><th></th><th>Predicted: No dengue</th><th>Predicted: Dengue</th></tr></thead>
-      <tbody>
-        <tr><th>Actual: No dengue</th><td class="ok">{{ mc[0][0] }}<br><span class="text-muted">true negatives</span></td>
-            <td class="err">{{ mc[0][1] }}<br><span class="text-muted">false positives</span></td></tr>
-        <tr><th>Actual: Dengue</th><td class="err">{{ mc[1][0] }}<br><span class="text-muted">false negatives</span></td>
-            <td class="ok">{{ mc[1][1] }}<br><span class="text-muted">true positives</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="col-lg-6">
-    <h2 class="h5">Model comparison</h2>
-    <p class="small text-muted">5-fold stratified cross-validation, threshold 50 %. The model with the highest ROC-AUC was selected.</p>
-    <div class="table-responsive">
+      <h2 class="h5 mt-4">Results on test data</h2>
+      <p class="small text-muted">20% of the cases, reserved and never used for training ({{ "{:,}".format(info.data.n_test) }} cases).</p>
       <table class="table table-sm">
-        <thead><tr><th>Model</th><th class="text-end">Accuracy</th><th class="text-end">Precision</th><th class="text-end">Recall</th><th class="text-end">F1</th><th class="text-end">ROC-AUC</th></tr></thead>
+        <thead><tr><th>Metric</th><th class="text-end">Threshold {{ threshold_pct }}%</th><th class="text-end">Threshold 50%</th></tr></thead>
         <tbody>
-          {% for m in info.metricas_cv %}
-          <tr class="{{ 'table-active fw-semibold' if m.modelo == info.nombre_modelo }}">
-            <td>{{ m.modelo }}</td>
-            {% for k in ["accuracy", "precision", "recall", "f1", "roc_auc"] %}<td class="text-end">{{ '%.3f' % m[k] }}</td>{% endfor %}
-          </tr>
+          {% for key, label in [("accuracy", "Accuracy"), ("precision", "Precision"), ("recall", "Sensitivity / recall (dengue)"),
+                                ("specificity", "Specificity"), ("f1", "F1"), ("roc_auc", "ROC-AUC")] %}
+          <tr><td>{{ label }}</td><td class="text-end fw-semibold">{{ '%.3f' % t[key] }}</td>
+              <td class="text-end text-muted">{{ '%.3f' % info.test_metrics_threshold_05[key] }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
-    </div>
 
-    <h2 class="h5 mt-4">Feature importance</h2>
-    <p class="small text-muted">How much the ROC-AUC worsens when each feature is randomly shuffled (permutation importance).</p>
-    {% set maximo = info.importancia[0].importancia %}
-    {% for v in info.importancia %}
-      <div class="d-flex align-items-center mb-1 small">
-        <div class="imp-nombre">{{ v.nombre }}</div>
-        <div class="flex-grow-1 bg-light rounded"><div class="imp-barra rounded" style="width: {{ [v.importancia / maximo * 100, 0]|max }}%"></div></div>
-        <div class="imp-valor text-end">{{ '%.3f' % v.importancia }}</div>
+      <h2 class="h6 mt-4">Confusion matrix (threshold {{ threshold_pct }}%)</h2>
+      <table class="table text-center matrix small mb-0">
+        <thead><tr><th></th><th>Predicted: No dengue</th><th>Predicted: Dengue</th></tr></thead>
+        <tbody>
+          <tr><th class="align-middle">Actual: No dengue</th><td class="ok">{{ cm[0][0] }}<span>true negatives</span></td>
+              <td class="err">{{ cm[0][1] }}<span>false positives</span></td></tr>
+          <tr><th class="align-middle">Actual: Dengue</th><td class="err">{{ cm[1][0] }}<span>false negatives</span></td>
+              <td class="ok">{{ cm[1][1] }}<span>true positives</span></td></tr>
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body p-4">
+      <h2 class="h5">Model comparison</h2>
+      <p class="small text-muted">5-fold stratified cross-validation, threshold 50%. The model with the highest ROC-AUC was selected.</p>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr><th>Model</th><th class="text-end">Accuracy</th><th class="text-end">Precision</th><th class="text-end">Recall</th><th class="text-end">F1</th><th class="text-end">ROC-AUC</th></tr></thead>
+          <tbody>
+            {% for m in info.cv_metrics %}
+            <tr class="{{ 'table-active fw-semibold' if m.model == info.model_name }}">
+              <td>{{ m.model }}</td>
+              {% for k in ["accuracy", "precision", "recall", "f1", "roc_auc"] %}<td class="text-end">{{ '%.3f' % m[k] }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-    {% endfor %}
+
+      <h2 class="h5 mt-4">Feature importance</h2>
+      <p class="small text-muted">How much the ROC-AUC worsens when each feature is randomly shuffled (permutation importance).</p>
+      {% set maximum = info.importance[0].importance %}
+      {% for v in info.importance %}
+        <div class="d-flex align-items-center gap-2 mb-2 small">
+          <div class="importance-label">{{ v.label }}</div>
+          <div class="importance-track"><div class="importance-bar" style="width: {{ [v.importance / maximum * 100, 0]|max }}%"></div></div>
+          <div class="importance-value text-end">{{ '%.3f' % v.importance }}</div>
+        </div>
+      {% endfor %}
+    </div></div>
   </div>
 </div>
 
-<div class="card border-warning mt-4">
-  <div class="card-body">
+<div class="card mt-4" style="border-color: #f3d58a; background: #fffbf0;">
+  <div class="card-body p-4">
     <h2 class="h5">Limitations</h2>
     <ul class="mb-0">
       <li><strong>Moderate predictive performance</strong> (ROC-AUC ≈ {{ '%.2f' % t.roc_auc }}). Dengue symptoms are similar to those of other
         febrile infections; therefore, the actual diagnosis requires laboratory testing. It is a <strong>screening</strong> tool, not a diagnostic tool.</li>
-      <li>Many <strong>false alarms</strong>: with the selected threshold, only {{ '%.0f' % (t.especificidad * 100) }} % of cases without dengue are correctly classified.</li>
+      <li>Many <strong>false alarms</strong>: with the selected threshold, only {{ '%.0f' % (t.specificity * 100) }}% of cases without dengue are correctly classified.</li>
       <li><strong>Changes over time:</strong>
-        {% for v in info.validacion_temporal %}{{ v.escenario }}: ROC-AUC {{ '%.2f' % v.roc_auc }}{{ '; ' if not loop.last else '.' }}{% endfor %}
+        {% for v in info.temporal_validation %}{{ v.scenario }}: ROC-AUC {{ '%.2f' % v.roc_auc }}{{ '; ' if not loop.last else '.' }}{% endfor %}
         It works with the 2023–2024 pattern, but not with 2025–2026 (post-epidemic period). It must be retrained periodically.</li>
       <li>Data from a single municipality, and age is only available in ranges.</li>
     </ul>
   </div>
 </div>
-<p class="small text-muted mt-3">Trained on {{ info.fecha_entrenamiento[:10] }} with scikit-learn {{ info.sklearn_version }}.</p>
+<p class="small text-muted mt-3">Trained on {{ info.trained_at[:10] }} with scikit-learn {{ info.sklearn_version }}.</p>
 {% endblock %}

@@ -1,11 +1,11 @@
-# Despliegue en Render (Blueprint). Render lee este archivo al conectar el repositorio.
+# Render deployment (Blueprint). Render reads this file when the repository is connected.
 services:
   - type: web
     name: dengue-forecasting
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    # gunicorn es un servidor WSGI de producción; el servidor de "flask run" es solo para desarrollo.
+    # gunicorn is a production WSGI server; the "flask run" server is for development only.
     startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION

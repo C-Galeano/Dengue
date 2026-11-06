@@ -5,74 +5,74 @@ Production:  gunicorn app:app
 """
 from flask import abort, current_app, redirect, render_template, request, url_for
 
-from src.base_datos import Paciente, db
-from src.configuracion import crear_app
-from src.prediccion import POCO_PROBABLE, PROBABLE
-from src.preprocesamiento import NOMBRES_SINTOMAS
-from src.pronostico import (SEMANAS_TEST_DEFECTO, documento_proyecto, leer_serie,
-                            pronostico_baseline, serie_demo)
-from src.validacion import validar_paciente
+from src.app_factory import create_app
+from src.database import Patient, db
+from src.forecast import (TEST_WEEKS_DEFAULT, baseline_forecast, demo_series,
+                          project_document, read_series)
+from src.prediction import PROBABLE, UNLIKELY
+from src.preprocessing import SYMPTOM_LABELS
+from src.validation import validate_patient
 
-app = crear_app()
+app = create_app()
 
 
 @app.route("/", methods=["GET", "POST"])
-def inicio():
+def home():
     """Home page: project structure + baseline forecast (tabs)."""
-    error, datos_propios, serie = None, False, serie_demo()
+    error, own_data, series = None, False, demo_series()
     if request.method == "POST":
-        archivo = request.files.get("archivo")
+        file = request.files.get("file")
         try:
-            if archivo and archivo.filename:
-                serie, datos_propios = leer_serie(archivo=archivo), True
-            elif request.form.get("serie"):
-                serie, datos_propios = leer_serie(serie_json=request.form["serie"]), True
+            if file and file.filename:
+                series, own_data = read_series(file=file), True
+            elif request.form.get("series"):
+                series, own_data = read_series(series_json=request.form["series"]), True
         except ValueError as exc:
             error = str(exc)
-    semanas_test = request.form.get("semanas_test", SEMANAS_TEST_DEFECTO, type=int)
-    return render_template("home.html", documento=documento_proyecto(), error=error,
-                           pronostico=pronostico_baseline(serie, semanas_test),
-                           datos_propios=datos_propios, pestana_pronostico=request.method == "POST")
+    test_weeks = request.form.get("test_weeks", TEST_WEEKS_DEFAULT, type=int)
+    return render_template("home.html", document=project_document(), error=error,
+                           forecast=baseline_forecast(series, test_weeks),
+                           own_data=own_data, forecast_tab=request.method == "POST")
 
 
-@app.route("/registro", methods=["GET", "POST"])
-def registro():
+@app.route("/register", methods=["GET", "POST"])
+def register():
     """Patient registration and prediction form."""
     if request.method == "GET":
-        return render_template("register.html", valores={}, errores={})
+        return render_template("register.html", values={}, errors={})
 
-    datos, errores = validar_paciente(request.form)
-    if errores:
-        return render_template("register.html", valores=request.form, errores=errores), 400
+    data, errors = validate_patient(request.form)
+    if errors:
+        return render_template("register.html", values=request.form, errors=errors), 400
 
-    sintomas = {s: datos[s] for s in NOMBRES_SINTOMAS}
-    proba, resultado = current_app.extensions["predictor"].predecir(datos["edad"], datos["sexo"], sintomas)
-    paciente = Paciente(**datos, probabilidad=proba, resultado=resultado)
-    db.session.add(paciente)
+    symptoms = {s: data[s] for s in SYMPTOM_LABELS}
+    proba, result = current_app.extensions["predictor"].predict(data["age"], data["sex"], symptoms)
+    patient = Patient(**data, probability=proba, result=result)
+    db.session.add(patient)
     db.session.commit()
     # Post/Redirect/Get: reloading the results page does not register the patient again.
-    return redirect(url_for("resultado", paciente_id=paciente.id))
+    return redirect(url_for("result", patient_id=patient.id))
 
 
-@app.route("/resultado/<int:paciente_id>")
-def resultado(paciente_id):
-    paciente = db.session.get(Paciente, paciente_id) or abort(404)
-    return render_template("result.html", p=paciente, umbral=current_app.extensions["predictor"].umbral)
+@app.route("/result/<int:patient_id>")
+def result(patient_id):
+    patient = db.session.get(Patient, patient_id) or abort(404)
+    return render_template("result.html", p=patient, threshold=current_app.extensions["predictor"].threshold)
 
 
-@app.route("/pacientes")
-def pacientes():
-    """Patient list filtered by result: ?resultado=probable | poco | todos."""
-    filtros = {"probable": PROBABLE, "poco": POCO_PROBABLE}
-    filtro = request.args.get("resultado", "todos")
-    consulta = db.select(Paciente).order_by(Paciente.fecha_registro.desc())
-    if filtro in filtros:
-        consulta = consulta.where(Paciente.resultado == filtros[filtro])
+@app.route("/patients")
+def patients():
+    """Patient list filtered by result: ?result=probable | unlikely | all."""
+    filters = {"probable": PROBABLE, "unlikely": UNLIKELY}
+    current_filter = request.args.get("result", "all")
+    query = db.select(Patient).order_by(Patient.registered_at.desc())
+    if current_filter in filters:
+        query = query.where(Patient.result == filters[current_filter])
     else:
-        filtro = "todos"
-    return render_template("patients.html", pacientes=db.session.scalars(consulta).all(), filtro=filtro)
+        current_filter = "all"
+    return render_template("patients.html", patients=db.session.scalars(query).all(), current_filter=current_filter)
 
 
-@app.route("/acerca")
-def acerca():
+@app.route("/about")
+def about():
     return render_template("about.html", info=current_app.extensions["predictor"].info)

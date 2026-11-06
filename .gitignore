@@ -8,3 +8,5 @@ data/raw/
 .pytest_cache/
 .ipynb_checkpoints/
 instance/
+build/
+dist/

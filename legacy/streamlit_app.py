@@ -1,6 +1,6 @@
 """Weekly dengue forecasting dashboard (Streamlit), deployed on Render.
 
-Tab "Project structure": shows docs/estructura_proyecto.md.
+Tab "Project structure": shows docs/project_structure.md.
 Tab "Forecast": without uploaded data it uses a synthetic demo series. With a
 CSV (columns `week`, `cases`) it computes the baseline and its error on the latest weeks.
 """
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-DOC = Path(__file__).parent / "docs" / "estructura_proyecto.md"
+DOC = Path(__file__).resolve().parent.parent / "docs" / "project_structure.md"
 
 st.set_page_config(page_title="Dengue forecasting", page_icon="🦟", layout="wide")
 st.title("Weekly Dengue Case Forecasting in Colombia")
