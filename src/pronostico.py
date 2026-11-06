@@ -1,6 +1,6 @@
-"""Página principal: estructura del proyecto y pronóstico semanal baseline.
+"""Main page: project structure and weekly baseline forecast.
 
-Reproduce la app original de Streamlit (legacy/streamlit_app.py) con la misma lógica.
+Reproduces the original Streamlit app (legacy/streamlit_app.py) with the same logic.
 """
 import json
 from functools import lru_cache
@@ -17,13 +17,13 @@ SEMANAS_TEST_MIN, SEMANAS_TEST_MAX, SEMANAS_TEST_DEFECTO = 8, 52, 26
 
 @lru_cache
 def documento_proyecto():
-    """Convierte docs/estructura_proyecto.md a HTML (una sola vez) con estilos de Bootstrap."""
+    """Converts docs/estructura_proyecto.md to HTML (only once) with Bootstrap styles."""
     html = markdown.markdown(DOC_PROYECTO.read_text(encoding="utf-8"), extensions=["tables"])
     return html.replace("<table>", '<table class="table table-sm table-bordered">')
 
 
 def serie_demo(semanas=156):
-    """Serie sintética con estacionalidad anual (igual a la de la app original)."""
+    """Synthetic series with annual seasonality (same as the original app)."""
     rng = np.random.default_rng(42)
     t = np.arange(semanas)
     casos = 40 + 30 * np.sin(2 * np.pi * t / 52) + 0.1 * t + rng.normal(0, 6, semanas)
@@ -31,8 +31,8 @@ def serie_demo(semanas=156):
 
 
 def leer_serie(archivo=None, serie_json=None):
-    """Lee la serie de un CSV subido (columnas `semana` y `casos`) o del JSON que la página
-    reenvía al mover el deslizador. Lanza ValueError con un mensaje legible si no es válida."""
+    """Reads the series from an uploaded CSV (columns `semana` and `casos`) or from the JSON
+    sent back by the page when moving the slider. Raises ValueError with a readable message if invalid."""
     try:
         df = pd.read_csv(archivo) if archivo else pd.DataFrame(json.loads(serie_json))
     except Exception as exc:
@@ -47,7 +47,7 @@ def leer_serie(archivo=None, serie_json=None):
 
 
 def pronostico_baseline(df, semanas_test=SEMANAS_TEST_DEFECTO):
-    """Baseline: la próxima semana = esta semana. División temporal: las últimas semanas son test."""
+    """Baseline: next week = this week. Time-based split: the last weeks are used for testing."""
     semanas_test = int(np.clip(semanas_test, SEMANAS_TEST_MIN, min(SEMANAS_TEST_MAX, len(df) - 1)))
     test = df.iloc[-semanas_test:]
     pred = df["casos"].shift(1).iloc[-semanas_test:]

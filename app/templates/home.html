@@ -2,7 +2,7 @@
 {% block titulo %}Dengue forecasting{% endblock %}
 {% block contenido %}
 <h1 class="fw-bold mb-1">Weekly Dengue Case Forecasting in Colombia</h1>
-<p class="text-muted small">Machine Learning final project · SIVIGILA (datos.gov.co) + clima IDEAM</p>
+<p class="text-muted small">Machine Learning final project · SIVIGILA (datos.gov.co) + IDEAM weather</p>
 
 <ul class="nav nav-tabs mt-3" role="tablist">
   <li class="nav-item" role="presentation">
@@ -67,7 +67,7 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-  // Como en Streamlit: al cambiar el archivo o el deslizador, se recalcula automáticamente.
+  // As in Streamlit: when the file or slider changes, the forecast is recalculated automatically.
   const form = document.getElementById("form-pronostico");
   const deslizador = document.getElementById("semanas_test");
   deslizador.addEventListener("input", () => document.getElementById("valor-semanas").textContent = deslizador.value);
@@ -89,11 +89,11 @@
       },
       options: {
         responsive: true, maintainAspectRatio: false, interaction: {mode: "index", intersect: false},
-        scales: {x: {title: {display: true, text: "semana"}, ticks: {maxTicksLimit: 12}}, y: {beginAtZero: true}},
+        scales: {x: {title: {display: true, text: "Week"}, ticks: {maxTicksLimit: 12}}, y: {beginAtZero: true}},
       },
     });
   }
-  // El gráfico se crea cuando su pestaña está visible (un canvas oculto no tiene tamaño).
+  // The chart is created when its tab is visible (a hidden canvas has no dimensions).
   document.querySelector('[data-bs-target="#tab-pronostico"]').addEventListener("shown.bs.tab", dibujar);
   dibujar();
 </script>

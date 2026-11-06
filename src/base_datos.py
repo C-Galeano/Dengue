@@ -1,10 +1,10 @@
-"""Modelo de base de datos (ORM SQLAlchemy). La misma clase funciona en SQLite y PostgreSQL."""
+"""Database model (SQLAlchemy ORM). The same class works with SQLite and PostgreSQL."""
 from datetime import datetime, timedelta, timezone
 
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
-HORA_COLOMBIA = timezone(timedelta(hours=-5))  # Colombia no tiene horario de verano
+HORA_COLOMBIA = timezone(timedelta(hours=-5))  # Colombia does not observe daylight saving time
 
 
 def ahora_colombia():
@@ -16,13 +16,13 @@ class Paciente(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
-    # No es único: una misma persona puede registrarse en varias consultas.
+    # Not unique: the same person can be registered for multiple consultations.
     documento = db.Column(db.String(15), nullable=False, index=True)
     edad = db.Column(db.Integer, nullable=False)
-    sexo = db.Column(db.String(1), nullable=False)  # "F" o "M", como en SIVIGILA
+    sexo = db.Column(db.String(1), nullable=False)  # "F" or "M", as in SIVIGILA
     fecha_registro = db.Column(db.DateTime, nullable=False, default=ahora_colombia)
 
-    # Síntomas (booleanos): mismos nombres que las variables del modelo
+    # Symptoms (booleans): same names as the model variables
     cefalea = db.Column(db.Boolean, nullable=False, default=False)
     dolor_retroocular = db.Column(db.Boolean, nullable=False, default=False)
     mialgias = db.Column(db.Boolean, nullable=False, default=False)
@@ -34,11 +34,11 @@ class Paciente(db.Model):
     somnolencia = db.Column(db.Boolean, nullable=False, default=False)
     sangrado_mucosas = db.Column(db.Boolean, nullable=False, default=False)
 
-    probabilidad = db.Column(db.Float, nullable=False)  # 0 a 1
-    resultado = db.Column(db.String(20), nullable=False, index=True)  # "Probable dengue" / "Poco probable"
+    probabilidad = db.Column(db.Float, nullable=False)  # 0 to 1
+    resultado = db.Column(db.String(20), nullable=False, index=True)  # "Probable dengue" / "Unlikely"
 
     def sintomas(self, nombres):
-        """Lista de síntomas presentes, con su nombre legible."""
+        """List of present symptoms, with their readable names."""
         return [etiqueta for clave, etiqueta in nombres.items() if getattr(self, clave)]
 
     def __repr__(self):

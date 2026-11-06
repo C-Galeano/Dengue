@@ -1,4 +1,4 @@
-"""Lógica del proyecto: preprocesamiento, entrenamiento, predicción, base de datos y web.
+"""Project logic: preprocessing, training, prediction, database, and web.
 
-La raíz app.py solo define las rutas; todo lo demás vive aquí.
+The app.py root file only defines the routes; everything else lives here.
 """

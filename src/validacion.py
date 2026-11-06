@@ -1,6 +1,6 @@
-"""Validación en el servidor del formulario de registro.
+"""Server-side validation of the registration form.
 
-La validación del navegador (HTML5) se puede saltar fácilmente; esta no.
+Browser validation (HTML5) can be easily bypassed; this validation cannot.
 """
 import re
 
@@ -11,25 +11,25 @@ RE_DOCUMENTO = re.compile(r"^[0-9A-Za-z]{5,15}$")
 
 
 def validar_paciente(form):
-    """Devuelve (datos_limpios, errores). Si errores está vacío, los datos son válidos."""
+    """Returns (clean_data, errors). If errors is empty, the data is valid."""
     errores = {}
     nombre = " ".join(form.get("nombre", "").split())
     documento = form.get("documento", "").strip()
     sexo = form.get("sexo", "")
 
     if not RE_NOMBRE.match(nombre):
-        errores["nombre"] = "Ingrese un nombre válido (3 a 100 letras)."
+        errores["nombre"] = "Enter a valid name (3 to 100 letters)."
     if not RE_DOCUMENTO.match(documento):
-        errores["documento"] = "El documento debe tener entre 5 y 15 letras o números, sin espacios ni puntos."
+        errores["documento"] = "The document must contain between 5 and 15 letters or numbers, without spaces or periods."
     try:
         edad = int(form.get("edad", "").strip())
         if not 0 <= edad <= 120:
             raise ValueError
     except ValueError:
         edad = None
-        errores["edad"] = "La edad debe ser un número entero entre 0 y 120."
+        errores["edad"] = "Age must be an integer between 0 and 120."
     if sexo not in ("F", "M"):
-        errores["sexo"] = "Seleccione el sexo."
+        errores["sexo"] = "Please select a sex."
 
     sintomas = {s: s in form for s in NOMBRES_SINTOMAS}
     return {"nombre": nombre, "documento": documento, "edad": edad, "sexo": sexo, **sintomas}, errores

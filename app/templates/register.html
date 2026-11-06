@@ -1,41 +1,41 @@
 {% extends "base.html" %}
-{% block titulo %}Registrar paciente{% endblock %}
+{% block titulo %}Register patient{% endblock %}
 {% block contenido %}
 <div class="row justify-content-center">
   <div class="col-lg-9">
-    <h1 class="h3 mb-1">Registrar paciente</h1>
-    <p class="text-muted mb-4">Ingrese los datos y marque los síntomas que presenta el paciente <strong>con fiebre</strong>.
-      El modelo estima la probabilidad de que el cuadro febril sea dengue.</p>
+    <h1 class="h3 mb-1">Register patient</h1>
+    <p class="text-muted mb-4">Enter the information and select the symptoms the patient <strong>with fever</strong> is experiencing.
+      The model estimates the probability that the febrile illness is dengue.</p>
 
     {% if errores %}
-      <div class="alert alert-danger">Revise los campos marcados en rojo.</div>
+      <div class="alert alert-danger">Please review the fields marked in red.</div>
     {% endif %}
 
     <form method="post" novalidate class="card shadow-sm">
       <div class="card-body p-4">
-        <h2 class="h5 mb-3">Datos del paciente</h2>
+        <h2 class="h5 mb-3">Patient information</h2>
         <div class="row g-3">
           <div class="col-md-7">
-            <label for="nombre" class="form-label">Nombre completo</label>
+            <label for="nombre" class="form-label">Full name</label>
             <input type="text" class="form-control {{ 'is-invalid' if errores.nombre }}" id="nombre" name="nombre"
                    value="{{ valores.nombre }}" required minlength="3" maxlength="100" autocomplete="name">
             <div class="invalid-feedback">{{ errores.nombre }}</div>
           </div>
           <div class="col-md-5">
-            <label for="documento" class="form-label">Documento de identidad</label>
+            <label for="documento" class="form-label">Identification document</label>
             <input type="text" class="form-control {{ 'is-invalid' if errores.documento }}" id="documento" name="documento"
                    value="{{ valores.documento }}" required pattern="[0-9A-Za-z]{5,15}" maxlength="15" inputmode="numeric">
             <div class="invalid-feedback">{{ errores.documento }}</div>
           </div>
           <div class="col-6 col-md-3">
-            <label for="edad" class="form-label">Edad (años)</label>
+            <label for="edad" class="form-label">Age (years)</label>
             <input type="number" class="form-control {{ 'is-invalid' if errores.edad }}" id="edad" name="edad"
                    value="{{ valores.edad }}" required min="0" max="120" step="1">
             <div class="invalid-feedback">{{ errores.edad }}</div>
           </div>
           <div class="col-6 col-md-4">
-            <span class="form-label d-block">Sexo</span>
-            {% for valor, texto in [("F", "Femenino"), ("M", "Masculino")] %}
+            <span class="form-label d-block">Sex</span>
+            {% for valor, texto in [("F", "Female"), ("M", "Male")] %}
               <div class="form-check form-check-inline">
                 <input class="form-check-input {{ 'is-invalid' if errores.sexo }}" type="radio" name="sexo"
                        id="sexo{{ valor }}" value="{{ valor }}" required {{ 'checked' if valores.sexo == valor }}>
@@ -47,8 +47,8 @@
         </div>
 
         <hr class="my-4">
-        <h2 class="h5 mb-1">Síntomas</h2>
-        <p class="text-muted small">Marque todos los que apliquen. Se asume que el paciente tiene fiebre.</p>
+        <h2 class="h5 mb-1">Symptoms</h2>
+        <p class="text-muted small">Select all that apply. It is assumed that the patient has a fever.</p>
         <div class="row row-cols-1 row-cols-sm-2 g-2">
           {% for clave, etiqueta in NOMBRES_SINTOMAS.items() %}
             <div class="col">
@@ -62,7 +62,7 @@
         </div>
       </div>
       <div class="card-footer bg-white p-3 text-end">
-        <button type="submit" class="btn btn-marca btn-lg px-4">Calcular probabilidad</button>
+        <button type="submit" class="btn btn-marca btn-lg px-4">Calculate probability</button>
       </div>
     </form>
   </div>

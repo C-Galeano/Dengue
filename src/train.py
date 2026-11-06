@@ -1,7 +1,7 @@
-"""Fase 2: entrena y compara modelos para predecir dengue (confirmado vs. descartado) a partir de
-edad, sexo y síntomas reportables. Guarda el mejor en models/modelo.pkl.
+"""Phase 2: trains and compares models to predict dengue (confirmed vs. discarded) based on
+age, sex, and reportable symptoms. Saves the best model to models/modelo.pkl.
 
-Uso:
+Usage:
     python -m src.train
 """
 import json
@@ -27,17 +27,17 @@ from src.preprocesamiento import (BINARIAS, CATEGORICAS, FEATURES, GRUPOS_EDAD, 
                               NOMBRES_SINTOMAS, preparar_datos)
 
 SEED = 42
-RECALL_OBJETIVO = 0.80   # Recall mínimo de la clase dengue al elegir el umbral
-TOLERANCIA_AUC = 0.005   # Si dos modelos difieren menos que esto en AUC, se prefiere el más simple
+RECALL_OBJETIVO = 0.80   # Minimum recall for the dengue class when selecting the threshold
+TOLERANCIA_AUC = 0.005   # If two models differ by less than this in AUC, the simpler one is preferred
 METRICAS = ["accuracy", "precision", "recall", "f1", "roc_auc"]
 CV = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
 
 
 def preprocesador():
-    """Imputa nulos (valor más frecuente) y codifica edad/sexo con one-hot.
+    """Imputes missing values (most frequent value) and encodes age/sex using one-hot encoding.
 
-    Va DENTRO del pipeline: así la imputación se aprende solo con los datos de entrenamiento de
-    cada pliegue (sin fuga) y la app web reutiliza exactamente la misma transformación.
+    It goes INSIDE the pipeline: this way, imputation is learned only from the training data of
+    each fold (without leakage), and the web app reuses exactly the same transformation.
     """
     categoricas = Pipeline([
         ("imputar", SimpleImputer(strategy="most_frequent")),
@@ -50,11 +50,11 @@ def preprocesador():
 
 
 def construir_modelos():
-    """Los tres candidatos. class_weight='balanced' compensa el desbalance 68/32 dando más peso
-    a cada error en la clase minoritaria, sin inventar ni borrar filas (a diferencia de SMOTE o
-    del submuestreo)."""
+    """The three candidates. class_weight='balanced' compensates for the 68/32 class imbalance
+    by giving more weight to each error in the minority class, without adding or removing rows
+    (unlike SMOTE or undersampling)."""
     candidatos = {
-        "Regresión Logística": LogisticRegression(class_weight="balanced", max_iter=1000),
+        "Logistic Regression": LogisticRegression(class_weight="balanced", max_iter=1000),
         "Random Forest": RandomForestClassifier(
             n_estimators=300, min_samples_leaf=5, class_weight="balanced",
             n_jobs=-1, random_state=SEED),
@@ -66,7 +66,7 @@ def construir_modelos():
 
 
 def validacion_cruzada(modelos, X, y):
-    """Validación cruzada estratificada de 5 pliegues (umbral 0.5). Devuelve media y desviación."""
+    """5-fold stratified cross-validation (threshold 0.5). Returns the mean and standard deviation."""
     filas = []
     for nombre, modelo in modelos.items():
         res = cross_validate(modelo, X, y, cv=CV, scoring=METRICAS, n_jobs=-1)
@@ -79,18 +79,19 @@ def validacion_cruzada(modelos, X, y):
 
 
 def elegir_mejor(resultados_cv):
-    """El de mayor ROC-AUC; en empate técnico (< TOLERANCIA_AUC) gana el primero de la lista,
-    que es el más simple e interpretable."""
+    """The model with the highest ROC-AUC; in a technical tie (< TOLERANCIA_AUC), the first
+    model in the list wins because it is the simplest and most interpretable."""
     mejor_auc = resultados_cv["roc_auc"].max()
     return resultados_cv.index[resultados_cv["roc_auc"] >= mejor_auc - TOLERANCIA_AUC][0]
 
 
 def elegir_umbral(modelo, X, y, recall_objetivo=RECALL_OBJETIVO):
-    """Elige el umbral MÁS ALTO cuyo recall de dengue (en predicciones fuera de pliegue) sea
+    """Selects the HIGHEST threshold whose dengue recall (on out-of-fold predictions) is
     >= recall_objetivo.
 
-    Priorizamos recall porque no detectar un dengue es más grave que una falsa alarma; pero no
-    bajamos el umbral más de lo necesario, porque con umbral ~0 el modelo diría "dengue" a todos.
+    We prioritize recall because failing to detect dengue is more serious than a false alarm;
+    however, we do not lower the threshold more than necessary, because with a threshold near 0,
+    the model would classify everyone as having "dengue".
     """
     proba = cross_val_predict(modelo, X, y, cv=CV, method="predict_proba", n_jobs=-1)[:, 1]
     for umbral in np.arange(0.95, 0.04, -0.01):
@@ -114,25 +115,25 @@ def metricas(y_true, proba, umbral):
 
 
 def importancia(modelo, X, y):
-    """Importancia por permutación: cuánto cae el ROC-AUC si se desordena una variable.
-    Sirve igual para los tres modelos y trabaja sobre las variables originales (no las one-hot)."""
+    """Permutation importance: how much ROC-AUC decreases when a variable is shuffled.
+    It works equally well for all three models and uses the original variables (not the one-hot encoded ones)."""
     r = permutation_importance(modelo, X, y, scoring="roc_auc", n_repeats=10,
                                random_state=SEED, n_jobs=-1)
-    nombres = {**NOMBRES_SINTOMAS, "grupo_edad": "Grupo de edad", "sexo": "Sexo"}
+    nombres = {**NOMBRES_SINTOMAS, "grupo_edad": "Age group", "sexo": "Sex"}
     return (pd.DataFrame({"variable": X.columns, "nombre": [nombres[c] for c in X.columns],
                           "importancia": r.importances_mean, "std": r.importances_std})
             .sort_values("importancia", ascending=False).reset_index(drop=True))
 
 
 def validacion_temporal(modelo, X, y, fechas):
-    """Prueba extra de robustez: ¿el modelo sirve en un período que no vio al entrenar?
+    """Additional robustness test: does the model work in a period it did not see during training?
 
-    - 2024 -> 2023: entrenar con el año epidémico y evaluar en el año anterior.
-    - 2023-2024 -> 2025-2026: entrenar con el pasado y evaluar en el período post-epidemia.
+    - 2024 -> 2023: train on the epidemic year and evaluate on the previous year.
+    - 2023-2024 -> 2025-2026: train on past data and evaluate on the post-epidemic period.
     """
     anio = fechas.dt.year
-    escenarios = {"Entrena 2024, evalúa 2023": (anio == 2024, anio == 2023),
-                  "Entrena 2023-2024, evalúa 2025-2026": (anio <= 2024, anio >= 2025)}
+    escenarios = {"Train 2024, evaluate 2023": (anio == 2024, anio == 2023),
+                  "Train 2023-2024, evaluate 2025-2026": (anio <= 2024, anio >= 2025)}
     resultados = []
     for nombre, (train, test) in escenarios.items():
         m = sklearn.base.clone(modelo).fit(X[train], y[train])
@@ -147,38 +148,38 @@ def entrenar(guardar=True):
     X, y, fechas = preparar_datos()
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=SEED)
-    print(f"Datos: {len(X):,} casos ({y.mean():.1%} dengue) | train {len(X_train):,} | test {len(X_test):,}")
+    print(f"Data: {len(X):,} cases ({y.mean():.1%} dengue) | train {len(X_train):,} | test {len(X_test):,}")
 
     modelos = construir_modelos()
     resultados_cv = validacion_cruzada(modelos, X_train, y_train)
-    print("\nValidación cruzada (5 pliegues, umbral 0.5):")
+    print("\nCross-validation (5 folds, threshold 0.5):")
     print(resultados_cv[METRICAS].round(3).to_string())
 
     nombre = elegir_mejor(resultados_cv)
     mejor = modelos[nombre]
     umbral = elegir_umbral(mejor, X_train, y_train)
-    print(f"\nMejor modelo: {nombre} | umbral elegido: {umbral}")
+    print(f"\nBest model: {nombre} | selected threshold: {umbral}")
 
     mejor.fit(X_train, y_train)
     proba_test = mejor.predict_proba(X_test)[:, 1]
     test = metricas(y_test, proba_test, umbral)
     test_05 = metricas(y_test, proba_test, 0.5)
-    print("\nTest (20% reservado):")
+    print("\nTest (20% reserved):")
     for k in ["accuracy", "precision", "recall", "especificidad", "f1", "roc_auc"]:
-        print(f"  {k:<14} umbral {umbral}: {test[k]:.3f}   | umbral 0.5: {test_05[k]:.3f}")
-    print(f"  Matriz de confusión [[VN, FP], [FN, VP]]: {test['matriz_confusion']}")
+        print(f"  {k:<14} threshold {umbral}: {test[k]:.3f}   | threshold 0.5: {test_05[k]:.3f}")
+    print(f"  Confusion matrix [[TN, FP], [FN, TP]]: {test['matriz_confusion']}")
 
     imp = importancia(mejor, X_test, y_test)
-    print("\nImportancia (caída de ROC-AUC al permutar):")
+    print("\nImportance (ROC-AUC decrease after permutation):")
     print(imp[["nombre", "importancia"]].round(4).to_string(index=False))
 
     temporal = validacion_temporal(mejor, X, y, fechas)
-    print("\nValidación temporal:")
+    print("\nTemporal validation:")
     for t in temporal:
         print(f"  {t['escenario']:<38} ROC-AUC = {t['roc_auc']:.3f}  (n_test={t['n_test']:,})")
 
-    # Modelo final: se reentrena con TODOS los datos. Las métricas reportadas son las del test,
-    # que el modelo no había visto; reentrenar con más datos solo puede mejorar la estimación.
+    # Final model: retrained with ALL the data. The reported metrics are those from the test set,
+    # which the model had not seen; retraining with more data can only improve the estimate.
     final = sklearn.base.clone(mejor).fit(X, y)
 
     artefacto = {
@@ -206,7 +207,7 @@ def entrenar(guardar=True):
         resumen = {k: v for k, v in artefacto.items() if k != "modelo"}
         MODEL_PATH.with_name("metricas.json").write_text(
             json.dumps(resumen, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
-        print(f"\nGuardado: {MODEL_PATH} y metricas.json")
+        print(f"\nSaved: {MODEL_PATH} and metricas.json")
     return artefacto, {"modelos": modelos, "X_train": X_train, "X_test": X_test,
                        "y_train": y_train, "y_test": y_test, "fechas": fechas}
 
