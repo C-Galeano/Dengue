@@ -1,0 +1,38 @@
+:root { --marca: #b0302a; --marca-oscuro: #8c231e; }
+
+body { background: #f6f7f9; }
+
+.aviso { background: #fff3cd; color: #664d03; border-bottom: 1px solid #ffe69c; }
+
+.bg-marca { background-color: var(--marca) !important; }
+.text-marca { color: var(--marca) !important; }
+.btn-marca { background: var(--marca); border-color: var(--marca); color: #fff; }
+.btn-marca:hover, .btn-marca:focus { background: var(--marca-oscuro); border-color: var(--marca-oscuro); color: #fff; }
+
+/* Tarjetas de síntomas: toda la caja es clicable y se resalta al marcar */
+.sintoma { cursor: pointer; background: #fff; transition: background .15s, border-color .15s; }
+.sintoma:hover { background: #fdf1f0; }
+.sintoma:has(input:checked) { background: #fbe3e1; border-color: var(--marca) !important; }
+.form-check-input:checked { background-color: var(--marca); border-color: var(--marca); }
+
+/* Marca del umbral sobre la barra de probabilidad */
+.progress { overflow: visible; }
+.umbral { position: absolute; top: -4px; bottom: -4px; width: 3px; background: #212529; transform: translateX(-50%); }
+
+/* Matriz de confusión */
+.matriz td { width: 40%; font-size: 1.1rem; font-weight: 600; }
+.matriz td span { font-size: .75rem; font-weight: 400; }
+.matriz .ok { background: #e8f5e9; }
+.matriz .err { background: #fdecea; }
+
+/* Barras de importancia */
+.imp-nombre { width: 11rem; flex-shrink: 0; }
+.imp-barra { height: .9rem; background: var(--marca); }
+.imp-valor { width: 3.5rem; flex-shrink: 0; }
+
+/* Documento "Project structure" (markdown convertido a HTML) */
+.documento h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+.documento h2 { font-size: 1.3rem; margin-top: 1.75rem; border-bottom: 1px solid #dee2e6; padding-bottom: .3rem; }
+.documento h3 { font-size: 1.1rem; margin-top: 1.25rem; }
+.documento table { width: auto; }
+.documento table td:first-child { text-align: center; }

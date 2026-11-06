@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Resultado{% endblock %}
+{% block contenido %}
+{% set probable = p.resultado == PROBABLE %}
+{% set pct = p.probabilidad * 100 %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm text-center">
+      <div class="card-body p-4 p-md-5">
+        <p class="text-muted mb-1">{{ p.nombre }} · Doc. {{ p.documento }} · {{ p.edad }} años · {{ 'Femenino' if p.sexo == 'F' else 'Masculino' }}</p>
+        <p class="display-3 fw-bold mb-0 {{ 'text-marca' if probable else 'text-secondary' }}">{{ '%.1f' % pct }} %</p>
+        <p class="text-muted">probabilidad estimada de dengue</p>
+        <span class="badge fs-5 px-4 py-2 {{ 'bg-marca' if probable else 'bg-secondary' }}">{{ p.resultado }}</span>
+
+        <div class="progress mt-4 position-relative" style="height: 1.2rem;" role="progressbar"
+             aria-valuenow="{{ pct|round(1) }}" aria-valuemin="0" aria-valuemax="100" aria-label="Probabilidad">
+          <div class="progress-bar {{ 'bg-marca' if probable else 'bg-secondary' }}" style="width: {{ pct }}%"></div>
+          <div class="umbral" style="left: {{ umbral * 100 }}%" title="Umbral {{ (umbral * 100)|round|int }} %"></div>
+        </div>
+        <p class="small text-muted mt-2">La línea negra marca el umbral de decisión ({{ (umbral * 100)|round|int }} %).
+          Por encima se clasifica como «Probable dengue».</p>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h2 class="h6">Síntomas reportados</h2>
+        {% set lista = p.sintomas(NOMBRES_SINTOMAS) %}
+        {% if lista %}
+          {% for s in lista %}<span class="badge text-bg-light border me-1 mb-1">{{ s }}</span>{% endfor %}
+        {% else %}
+          <p class="text-muted mb-0">Solo fiebre (ningún otro síntoma marcado).</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="alert {{ 'alert-danger' if probable else 'alert-secondary' }} mt-3">
+      {% if probable %}
+        <strong>Se recomienda consultar a un profesional de la salud</strong> y realizar una prueba de laboratorio para dengue.
+      {% else %}
+        El modelo no encuentra un patrón típico de dengue, pero <strong>esto no lo descarta</strong>. Si la fiebre continúa, consulte.
+      {% endif %}
+      <hr>
+      <span class="small"><strong>Acuda a urgencias de inmediato</strong> si aparece: dolor abdominal intenso, vómito persistente,
+        sangrado, mareo o desmayo, somnolencia o irritabilidad marcada.</span>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 justify-content-center">
+      <a href="{{ url_for('registro') }}" class="btn btn-marca">Registrar otro paciente</a>
+      <a href="{{ url_for('pacientes') }}" class="btn btn-outline-secondary">Ver pacientes</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

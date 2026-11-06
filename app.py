@@ -1,56 +1,78 @@
-"""Weekly dengue forecasting dashboard (Streamlit), deployed on Render.
+"""Rutas de la aplicación web. La lógica vive en src/ y las plantillas en app/templates/.
 
-Tab "Project structure": shows docs/estructura_proyecto.md.
-Tab "Forecast": without uploaded data it uses a synthetic demo series. With a
-CSV (columns `semana`, `casos`) it computes the baseline and its error on the latest weeks.
+Local:       flask run --debug          (http://127.0.0.1:5000)
+Producción:  gunicorn app:app
 """
-from pathlib import Path
+from flask import abort, current_app, redirect, render_template, request, url_for
 
-import numpy as np
-import pandas as pd
-import streamlit as st
+from src.base_datos import Paciente, db
+from src.configuracion import crear_app
+from src.prediccion import POCO_PROBABLE, PROBABLE
+from src.preprocesamiento import NOMBRES_SINTOMAS
+from src.pronostico import (SEMANAS_TEST_DEFECTO, documento_proyecto, leer_serie,
+                            pronostico_baseline, serie_demo)
+from src.validacion import validar_paciente
 
-DOC = Path(__file__).parent / "docs" / "estructura_proyecto.md"
-
-st.set_page_config(page_title="Dengue forecasting", page_icon="🦟", layout="wide")
-st.title("Weekly Dengue Case Forecasting in Colombia")
-st.caption("Machine Learning final project · SIVIGILA (datos.gov.co) + clima IDEAM")
-
-
-@st.cache_data
-def demo_series(weeks: int = 156) -> pd.DataFrame:
-    rng = np.random.default_rng(42)
-    t = np.arange(weeks)
-    casos = 40 + 30 * np.sin(2 * np.pi * t / 52) + 0.1 * t + rng.normal(0, 6, weeks)
-    return pd.DataFrame({"semana": t + 1, "casos": np.clip(casos, 0, None).round()})
+app = crear_app()
 
 
-tab_proyecto, tab_pronostico = st.tabs(["Project structure", "Forecast"])
+@app.route("/", methods=["GET", "POST"])
+def inicio():
+    """Página principal: estructura del proyecto + pronóstico baseline (pestañas)."""
+    error, datos_propios, serie = None, False, serie_demo()
+    if request.method == "POST":
+        archivo = request.files.get("archivo")
+        try:
+            if archivo and archivo.filename:
+                serie, datos_propios = leer_serie(archivo=archivo), True
+            elif request.form.get("serie"):
+                serie, datos_propios = leer_serie(serie_json=request.form["serie"]), True
+        except ValueError as exc:
+            error = str(exc)
+    semanas_test = request.form.get("semanas_test", SEMANAS_TEST_DEFECTO, type=int)
+    return render_template("inicio.html", documento=documento_proyecto(), error=error,
+                           pronostico=pronostico_baseline(serie, semanas_test),
+                           datos_propios=datos_propios, pestana_pronostico=request.method == "POST")
 
-with tab_proyecto:
-    st.markdown(DOC.read_text(encoding="utf-8"))
 
-with tab_pronostico:
-    archivo = st.file_uploader("CSV with columns `semana` and `casos`", type="csv")
-    test_weeks = st.slider("Test weeks (time-based split)", 8, 52, 26)
+@app.route("/registro", methods=["GET", "POST"])
+def registro():
+    """Formulario de registro de paciente y predicción."""
+    if request.method == "GET":
+        return render_template("formulario.html", valores={}, errores={})
 
-    df = pd.read_csv(archivo) if archivo else demo_series()
-    if not archivo:
-        st.info("Showing synthetic demo data. Upload a CSV to use real data.")
+    datos, errores = validar_paciente(request.form)
+    if errores:
+        return render_template("formulario.html", valores=request.form, errores=errores), 400
 
-    train, test = df.iloc[:-test_weeks], df.iloc[-test_weeks:]
+    sintomas = {s: datos[s] for s in NOMBRES_SINTOMAS}
+    proba, resultado = current_app.extensions["predictor"].predecir(datos["edad"], datos["sexo"], sintomas)
+    paciente = Paciente(**datos, probabilidad=proba, resultado=resultado)
+    db.session.add(paciente)
+    db.session.commit()
+    # Post/Redirect/Get: recargar la página de resultado no vuelve a registrar al paciente.
+    return redirect(url_for("resultado", paciente_id=paciente.id))
 
-    # Baseline: next week = this week.
-    pred = df["casos"].shift(1).iloc[-test_weeks:]
-    mae = (test["casos"] - pred).abs().mean()
-    rmse = float(np.sqrt(((test["casos"] - pred) ** 2).mean()))
 
-    c1, c2 = st.columns(2)
-    c1.metric("MAE (baseline)", f"{mae:.1f} cases")
-    c2.metric("RMSE (baseline)", f"{rmse:.1f} cases")
+@app.route("/resultado/<int:paciente_id>")
+def resultado(paciente_id):
+    paciente = db.session.get(Paciente, paciente_id) or abort(404)
+    return render_template("resultado.html", p=paciente, umbral=current_app.extensions["predictor"].umbral)
 
-    chart = df.set_index("semana")[["casos"]].rename(columns={"casos": "Actual"})
-    chart["Predicted (baseline)"] = np.nan
-    chart.loc[test["semana"].values, "Predicted (baseline)"] = pred.values
-    st.line_chart(chart)
-    st.caption(f"Train: {len(train)} weeks · Test: {len(test)} weeks (latest).")
+
+@app.route("/pacientes")
+def pacientes():
+    """Listado con filtro por resultado: ?resultado=probable | poco | todos."""
+    filtros = {"probable": PROBABLE, "poco": POCO_PROBABLE}
+    filtro = request.args.get("resultado", "todos")
+    consulta = db.select(Paciente).order_by(Paciente.fecha_registro.desc())
+    if filtro in filtros:
+        consulta = consulta.where(Paciente.resultado == filtros[filtro])
+    else:
+        filtro = "todos"
+    return render_template("pacientes.html", pacientes=db.session.scalars(consulta).all(), filtro=filtro)
+
+
+@app.route("/acerca")
+def acerca():
+    return render_template("acerca.html", info=current_app.extensions["predictor"].info)

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block titulo %}Dengue forecasting{% endblock %}
+{% block contenido %}
+<h1 class="fw-bold mb-1">Weekly Dengue Case Forecasting in Colombia</h1>
+<p class="text-muted small">Machine Learning final project · SIVIGILA (datos.gov.co) + clima IDEAM</p>
+
+<ul class="nav nav-tabs mt-3" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link {{ 'active' if not pestana_pronostico }}" data-bs-toggle="tab" data-bs-target="#tab-proyecto"
+            type="button" role="tab" aria-controls="tab-proyecto" aria-selected="{{ 'false' if pestana_pronostico else 'true' }}">Project structure</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link {{ 'active' if pestana_pronostico }}" data-bs-toggle="tab" data-bs-target="#tab-pronostico"
+            type="button" role="tab" aria-controls="tab-pronostico" aria-selected="{{ 'true' if pestana_pronostico else 'false' }}">Forecast</button>
+  </li>
+</ul>
+
+<div class="tab-content bg-white border border-top-0 rounded-bottom p-3 p-md-4 shadow-sm">
+  <div class="tab-pane fade {{ 'show active' if not pestana_pronostico }} documento" id="tab-proyecto" role="tabpanel">
+    {{ documento|safe }}
+  </div>
+
+  <div class="tab-pane fade {{ 'show active' if pestana_pronostico }}" id="tab-pronostico" role="tabpanel">
+    {% set p = pronostico %}
+    <form method="post" enctype="multipart/form-data" id="form-pronostico">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <label for="archivo" class="form-label">CSV with columns <code>semana</code> and <code>casos</code></label>
+          <input class="form-control" type="file" id="archivo" name="archivo" accept=".csv">
+        </div>
+        <div class="col-md-6">
+          <label for="semanas_test" class="form-label">Test weeks (time-based split): <strong id="valor-semanas">{{ p.semanas_test }}</strong></label>
+          <input type="range" class="form-range" id="semanas_test" name="semanas_test" min="8" max="52" value="{{ p.semanas_test }}">
+          <div class="d-flex justify-content-between small text-muted"><span>8</span><span>52</span></div>
+        </div>
+      </div>
+      {% if datos_propios %}<input type="hidden" name="serie" value="{{ p.serie_json }}">{% endif %}
+      <noscript><button type="submit" class="btn btn-marca mt-2">Update</button></noscript>
+    </form>
+
+    {% if error %}
+      <div class="alert alert-danger mt-3">{{ error }}</div>
+    {% endif %}
+    {% if not datos_propios %}
+      <div class="alert alert-info mt-3">Showing synthetic demo data. Upload a CSV to use real data.</div>
+    {% endif %}
+
+    <div class="row g-3 mt-1">
+      <div class="col-6">
+        <div class="small text-muted">MAE (baseline)</div>
+        <div class="fs-2">{{ '%.1f' % p.mae }} cases</div>
+      </div>
+      <div class="col-6">
+        <div class="small text-muted">RMSE (baseline)</div>
+        <div class="fs-2">{{ '%.1f' % p.rmse }} cases</div>
+      </div>
+    </div>
+
+    <div class="position-relative mt-3" style="height: 360px;">
+      <canvas id="grafico" aria-label="Actual vs predicted weekly cases" role="img"></canvas>
+    </div>
+    <p class="small text-muted mt-2">Train: {{ p.n_train }} weeks · Test: {{ p.n_test }} weeks (latest).</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  // Como en Streamlit: al cambiar el archivo o el deslizador, se recalcula automáticamente.
+  const form = document.getElementById("form-pronostico");
+  const deslizador = document.getElementById("semanas_test");
+  deslizador.addEventListener("input", () => document.getElementById("valor-semanas").textContent = deslizador.value);
+  deslizador.addEventListener("change", () => form.submit());
+  document.getElementById("archivo").addEventListener("change", () => form.submit());
+
+  const datos = {{ {"semanas": pronostico.semanas, "real": pronostico.real, "predicho": pronostico.predicho}|tojson }};
+  let grafico;
+  function dibujar() {
+    if (grafico || !document.getElementById("tab-pronostico").classList.contains("active")) return;
+    grafico = new Chart(document.getElementById("grafico"), {
+      type: "line",
+      data: {
+        labels: datos.semanas,
+        datasets: [
+          {label: "Actual", data: datos.real, borderColor: "#1f77b4", backgroundColor: "#1f77b4", pointRadius: 0, borderWidth: 2},
+          {label: "Predicted (baseline)", data: datos.predicho, borderColor: "#ff7f0e", backgroundColor: "#ff7f0e", pointRadius: 0, borderWidth: 2},
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: {mode: "index", intersect: false},
+        scales: {x: {title: {display: true, text: "semana"}, ticks: {maxTicksLimit: 12}}, y: {beginAtZero: true}},
+      },
+    });
+  }
+  // El gráfico se crea cuando su pestaña está visible (un canvas oculto no tiene tamaño).
+  document.querySelector('[data-bs-target="#tab-pronostico"]').addEventListener("shown.bs.tab", dibujar);
+  dibujar();
+</script>
+{% endblock %}

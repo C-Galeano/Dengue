@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Pacientes{% endblock %}
+{% block contenido %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+  <h1 class="h3 mb-0">Pacientes registrados <span class="badge text-bg-light border">{{ pacientes|length }}</span></h1>
+  <div class="btn-group" role="group" aria-label="Filtrar por resultado">
+    {% for clave, texto in [("todos", "Todos"), ("probable", "Probable dengue"), ("poco", "Poco probable")] %}
+      <a href="{{ url_for('pacientes', resultado=clave) }}"
+         class="btn btn-sm {{ 'btn-marca' if filtro == clave else 'btn-outline-secondary' }}">{{ texto }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if pacientes %}
+<div class="table-responsive card shadow-sm">
+  <table class="table table-hover align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Fecha</th><th>Nombre</th><th>Documento</th><th class="text-center">Edad</th><th class="text-center">Sexo</th>
+        <th class="text-center">Síntomas</th><th class="text-end">Probabilidad</th><th>Resultado</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pacientes %}
+      <tr>
+        <td class="text-nowrap small">{{ p.fecha_registro.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.documento }}</td>
+        <td class="text-center">{{ p.edad }}</td>
+        <td class="text-center">{{ p.sexo }}</td>
+        <td class="text-center">{{ p.sintomas(NOMBRES_SINTOMAS)|length }}</td>
+        <td class="text-end fw-semibold">{{ '%.1f' % (p.probabilidad * 100) }} %</td>
+        <td><span class="badge {{ 'bg-marca' if p.resultado == PROBABLE else 'bg-secondary' }}">{{ p.resultado }}</span></td>
+        <td><a href="{{ url_for('resultado', paciente_id=p.id) }}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="alert alert-light border text-center py-5">
+    No hay pacientes {{ 'con este resultado' if filtro != 'todos' else 'registrados todavía' }}.
+    <a href="{{ url_for('registro') }}">Registrar uno</a>.
+  </div>
+{% endif %}
+{% endblock %}
