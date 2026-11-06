@@ -1,11 +1,6 @@
 venv/
+.venv/
 __pycache__/
-*.egg-info/
-.ipynb_checkpoints/
-.pytest_cache/
-
-# Data files are downloaded, not versioned
-data/**/*
-!data/**/.gitkeep
-reports/figures/*
-!reports/figures/.gitkeep
+*.pyc
+data/raw/
+.DS_Store
