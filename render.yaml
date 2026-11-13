@@ -6,8 +6,11 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     # gunicorn is a production WSGI server; the "flask run" server is for development only.
-    startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT
+    # 1 worker with threads: each worker loads the model (~220 MB) and the free plan has 512 MB of RAM.
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
     envVars:
+      - key: OMP_NUM_THREADS
+        value: "1"
       - key: PYTHON_VERSION
         value: 3.12.8
       - key: SECRET_KEY

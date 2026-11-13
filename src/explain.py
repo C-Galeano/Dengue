@@ -20,7 +20,7 @@ def shap_values(model, X):
         contrib = estimator.get_booster().predict(xgboost.DMatrix(X), pred_contribs=True)
         return np.transpose(contrib[:, :, :-1], (0, 2, 1))  # drop the bias column
     if name == "LGBMClassifier":
-        contrib = estimator.booster_.predict(X, pred_contrib=True)
+        contrib = estimator.booster_.predict(X, pred_contrib=True, num_threads=estimator.get_params().get("n_jobs") or -1)
         n_classes = len(estimator.classes_)
         contrib = contrib.reshape(len(X), n_classes, X.shape[1] + 1)
         return np.transpose(contrib[:, :, :-1], (0, 2, 1))

@@ -28,6 +28,11 @@ class Predictor:
     def __init__(self, path=MODEL_PATH):
         artifact = joblib.load(path)
         self.model = artifact["model"]
+        # One thread per prediction: n_jobs=-1 (saved at training time) makes LightGBM start one OpenMP thread
+        # per core of the HOST machine. On a small cloud instance (Render free: 0.1 CPU) those threads fight
+        # over a fraction of one CPU and a single prediction can exceed the 30 s worker timeout.
+        if "n_jobs" in self.model.get_params():
+            self.model.set_params(n_jobs=1)
         self.classes = artifact["classes"]
         self.class_labels = artifact["class_labels"]
         self.feature_labels = artifact["feature_labels"]
