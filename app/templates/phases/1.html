@@ -1,0 +1,94 @@
+{% extends "phases/_layout.html" %}
+{% from "phases/_macros.html" import file_item, task %}
+
+{% block concept %}
+<p>Every data project starts from a <strong>business need</strong>, not from the data or the algorithm. This phase turns that
+  need into a precise objective that a model can solve, and fixes in advance how success will be measured, before any result
+  can bias the decision.</p>
+<ul class="task-list">
+  {{ task("Determine the business objectives", "the problem, who suffers it and what a useful solution looks like.") }}
+  {{ task("Assess the situation", "available resources, constraints, risks and ethical aspects.") }}
+  {{ task("Determine the data-mining goals", "translate the business objective into a technical task (classification, forecasting…).") }}
+  {{ task("Produce a project plan", "phases, tools and deliverables.") }}
+</ul>
+{% endblock %}
+
+{% block implementation %}
+<h3 class="h6">The problem</h3>
+<p>Dengue, chikungunya and Zika are transmitted by the same mosquito (<em>Aedes aegypti</em>), co-circulate in Colombia and
+  Brazil and start with almost the same picture: fever, headache, muscle and joint pain, rash. In the first consultation the
+  clinician must decide what to suspect, which test to order and how to follow the patient. Getting it wrong matters:
+  dengue can progress to severe dengue, and the NSAIDs used for chikungunya's joint pain are dangerous in dengue.</p>
+
+<h3 class="h6">How the objective evolved</h3>
+<ol class="small">
+  <li><strong>Original proposal:</strong> forecast weekly dengue cases (kept as the baseline forecast on the home page).</li>
+  <li><strong>First iteration:</strong> a binary screening model, <em>dengue: yes/no</em>, with Colombian SIVIGILA data from Tuluá.</li>
+  <li><strong>Current iteration ("smart hospital"):</strong> after the first evaluation the scope was judged too narrow. The tool
+    now performs a <strong>differential diagnosis among arboviruses</strong> and <strong>explains its suggestion</strong> to the clinician.</li>
+</ol>
+
+<div class="row g-3 my-2">
+  <div class="col-md-6">
+    <div class="callout h-100">
+      <div class="callout-label">Business objective</div>
+      Support the clinician at the first consultation of a febrile patient: <strong>which arbovirus to suspect</strong>, which
+      test to order and which warning signs to watch, with a transparent explanation.
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="callout h-100">
+      <div class="callout-label">Data-mining goal</div>
+      <strong>Multiclass classification</strong>: dengue / chikungunya / other febrile illness, from symptoms, basic clinical and
+      laboratory findings, comorbidities and the epidemiological context (where and when), with
+      <strong>per-patient SHAP explanations</strong>.
+    </div>
+  </div>
+</div>
+
+<h3 class="h6 mt-4">Success criteria (fixed before modeling)</h3>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Criterion</th><th>Target</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Dengue recall</td><td class="fw-semibold">≥ {{ (info.target_dengue_recall * 100)|int }}%</td>
+          <td class="small">Missing dengue is the most dangerous error.</td></tr>
+      <tr><td>Macro ROC-AUC (one-vs-rest)</td><td class="fw-semibold">≥ 0.80</td>
+          <td class="small">The model must rank the three diagnoses well (target set by the course).</td></tr>
+      <tr><td>Better than the linear baseline</td><td class="fw-semibold">yes</td>
+          <td class="small">Tree ensembles are only justified if they beat Logistic Regression.</td></tr>
+      <tr><td>Explainability</td><td class="fw-semibold">every prediction</td>
+          <td class="small">A clinician must see why the model suggests a diagnosis.</td></tr>
+      <tr><td>Data leakage</td><td class="fw-semibold">none</td>
+          <td class="small">Only information available at the first consultation.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">Situation assessment</h3>
+<div class="table-responsive">
+  <table class="table table-sm">
+    <tbody>
+      <tr><th class="w-25">Data</th><td>Public surveillance microdata: SINAN (Brazil, DATASUS) for training; SIVIGILA Tuluá (Colombia) for external validation</td></tr>
+      <tr><th>Tools</th><td>Python, pandas, scikit-learn, XGBoost, LightGBM, SHAP, Flask, SQLAlchemy, Render</td></tr>
+      <tr><th>Constraints</th><td>No public dataset with numeric lab values (platelet or white-cell counts); Zika's public form has no clinical fields</td></tr>
+      <tr><th>Risks</th><td>Overlapping symptoms; a model trained in Brazil may not transfer to Colombia; class mix changes between years</td></tr>
+      <tr><th>Ethics</th><td>Decision support only, with a visible notice; transparent explanations; patient data stays in the app database</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block outputs %}
+<ul class="output-list">
+  <li>Business objective: arbovirus differential diagnosis</li>
+  <li>Data-mining goal: 3-class classifier + SHAP</li>
+  <li>Success criteria (dengue recall ≥ {{ (info.target_dengue_recall * 100)|int }}%)</li>
+  <li>Project plan: one notebook per phase</li>
+</ul>
+{% endblock %}
+
+{% block files %}
+{{ file_item("docs/crisp_dm.md", "Summary of the six phases") }}
+{{ file_item("docs/project_structure.md", "Original project proposal") }}
+{% endblock %}

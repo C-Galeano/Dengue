@@ -1,4 +1,8 @@
-# Lighter dependencies for the web app (no Prophet, XGBoost or Jupyter)
+# Development dependencies: notebooks, training and the forecasting module.
+# The web server installs requirements.txt only.
+-r requirements.txt
+shap==0.54.1
+pyarrow==25.0.1
 pandas==3.1.0
 numpy==2.5.4
 requests==2.34.2

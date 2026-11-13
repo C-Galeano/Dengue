@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "phases/_macros.html" import file_item %}
+{#
+  Shared layout of the six CRISP-DM phase pages. Each page (1.html … 6.html) fills:
+    - block concept:        what the phase is in CRISP-DM (generic tasks)
+    - block implementation: how this project implements it (decisions and real results)
+    - block outputs:        the phase deliverables (sidebar)
+    - block files:          files of the repository that belong to the phase (sidebar)
+  The code excerpts come from src/methodology.py (read from the real source with `inspect`).
+#}
+{% block title %}Phase {{ phase.number }} · {{ phase.name }}{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb" class="small mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{{ url_for('methodology') }}">Methodology</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Phase {{ phase.number }}</li>
+  </ol>
+</nav>
+
+<ol class="phase-stepper mb-4" aria-label="CRISP-DM phases">
+  {% for p in phases %}
+  <li class="{{ 'is-current' if p.number == phase.number else ('is-done' if p.number < phase.number) }}">
+    <a href="{{ url_for('phase', number=p.number) }}" {{ 'aria-current="step"'|safe if p.number == phase.number }}>
+      <span class="phase-dot">{{ p.number }}</span>
+      <span class="phase-step-name">{{ p.name }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ol>
+
+<header class="phase-header mb-4">
+  <span class="icon-tile">{{ icon(phase.icon) }}</span>
+  <div>
+    <div class="phase-kicker">CRISP-DM · Phase {{ phase.number }} of {{ phases|length }}</div>
+    <h1 class="h2 mb-1">{{ phase.name }}</h1>
+    <p class="lead text-muted mb-0">{{ phase.question }}</p>
+  </div>
+</header>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <section class="card mb-4">
+      <div class="card-body p-4">
+        <h2 class="h5 section-title"><span class="section-tag">The phase</span>What CRISP-DM asks for</h2>
+        {% block concept %}{% endblock %}
+      </div>
+    </section>
+
+    <section class="card mb-4">
+      <div class="card-body p-4 phase-body">
+        <h2 class="h5 section-title"><span class="section-tag is-brand">Implementation</span>What we did in this project</h2>
+        {% block implementation %}{% endblock %}
+      </div>
+    </section>
+
+    {% if code %}
+    <section class="card mb-4">
+      <div class="card-body p-4">
+        <h2 class="h5 section-title"><span class="section-tag">Code</span>{{ icon("code") }} Source code of this phase</h2>
+        <p class="small text-muted">Excerpts read directly from the repository, so they always match the code that runs.</p>
+        {% for title, path, source in code %}
+        <figure class="code-block mb-3">
+          <figcaption><strong>{{ title }}</strong><span>{{ path }}</span></figcaption>
+          <pre><code>{{ source }}</code></pre>
+        </figure>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="col-lg-4">
+    <div class="phase-aside">
+      <div class="card mb-4">
+        <div class="card-body p-4">
+          <h2 class="h6 text-uppercase text-muted small fw-bold mb-3">Phase outputs</h2>
+          {% block outputs %}{% endblock %}
+        </div>
+      </div>
+      <div class="card mb-4">
+        <div class="card-body p-4">
+          <h2 class="h6 text-uppercase text-muted small fw-bold mb-3">Files in the repository</h2>
+          <ul class="file-list">
+            {{ file_item("notebooks/" ~ phase.notebook, "Step-by-step notebook") }}
+            {% block files %}{% endblock %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<nav class="phase-pager d-flex justify-content-between gap-3 mt-2" aria-label="Phase navigation">
+  {% if phase.previous %}
+  <a class="card card-hover pager-card" href="{{ url_for('phase', number=phase.previous.number) }}">
+    <span class="small text-muted">{{ icon("back") }} Phase {{ phase.previous.number }}</span>
+    <strong>{{ phase.previous.name }}</strong>
+  </a>
+  {% else %}<span></span>{% endif %}
+  {% if phase.next %}
+  <a class="card card-hover pager-card text-end" href="{{ url_for('phase', number=phase.next.number) }}">
+    <span class="small text-muted">Phase {{ phase.next.number }} {{ icon("arrow") }}</span>
+    <strong>{{ phase.next.name }}</strong>
+  </a>
+  {% else %}
+  <a class="card card-hover pager-card text-end" href="{{ url_for('methodology') }}">
+    <span class="small text-muted">Back to the cycle {{ icon("arrow") }}</span>
+    <strong>Methodology overview</strong>
+  </a>
+  {% endif %}
+</nav>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "phases/_layout.html" %}
+{% from "phases/_macros.html" import file_item, task %}
+
+{% block concept %}
+<p>This phase selects modeling techniques, defines how they will be tested and trains them. Several algorithms are usually
+  compared, because the best one cannot be known in advance. The test design must be decided <strong>before</strong>
+  training, so the final evaluation stays honest.</p>
+<ul class="task-list">
+  {{ task("Select modeling techniques", "candidate algorithms and their assumptions.") }}
+  {{ task("Generate a test design", "how models are trained, validated and compared.") }}
+  {{ task("Build the models", "training and parameter settings.") }}
+  {{ task("Assess the models", "technical comparison and selection.") }}
+</ul>
+{% endblock %}
+
+{% block implementation %}
+<h3 class="h6">Test design</h3>
+<ul>
+  <li><strong>80% training / 20% test</strong>, stratified by diagnosis. The test set is not touched until Phase 5.</li>
+  <li><strong>5-fold stratified cross-validation</strong> on the training set to compare models.</li>
+  <li><strong>Selection metric: macro ROC-AUC (one-vs-rest)</strong>, the average of "dengue vs rest", "chikungunya vs rest"
+    and "other vs rest". It does not depend on any threshold. Ties within 0.005 are broken by the lower log-loss
+    (better-calibrated probabilities).</li>
+</ul>
+
+<h3 class="h6 mt-4">Candidate algorithms</h3>
+<div class="row g-3 mb-3">
+  {% for name, text in [
+      ("Logistic Regression", "Linear baseline. If tree models cannot beat it, their complexity is not justified."),
+      ("Random Forest", "Hundreds of decision trees trained on random samples that vote. Robust and captures interactions."),
+      ("XGBoost", "Gradient boosting: trees trained in sequence, each correcting the previous errors. Regularized; a standard in clinical tabular data."),
+      ("LightGBM", "Gradient boosting with leaf-wise growth and histograms: as accurate as XGBoost and faster.")] %}
+  <div class="col-md-6">
+    <div class="algo-card h-100 {{ 'is-selected' if name == info.model_name }}">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <strong>{{ name }}</strong>
+        {% if name == info.model_name %}<span class="badge-soft is-probable">Selected</span>
+        {% elif name == "Logistic Regression" %}<span class="badge-soft">Baseline</span>{% endif %}
+      </div>
+      <p class="small text-muted mb-0">{{ text }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="small text-muted">Tree models work directly on the numeric and 0/1 features and handle missing values natively.
+  XGBoost and LightGBM also compute exact SHAP values natively, which the web app uses for its explanations.</p>
+
+<h3 class="h6 mt-4">Cross-validation results</h3>
+<div class="table-responsive">
+  <table class="table table-sm">
+    <thead><tr><th>Model</th><th class="text-end">ROC-AUC</th><th class="text-end">Balanced acc.</th><th class="text-end">F1 macro</th><th class="text-end">Log-loss</th></tr></thead>
+    <tbody>
+      {% for m in info.cv_metrics %}
+      <tr class="{{ 'table-active fw-semibold' if m.model == info.model_name }}">
+        <td>{{ m.model }}</td>
+        {% for k in ["roc_auc", "balanced_accuracy", "f1_macro", "log_loss"] %}
+        <td class="text-end">{{ '%.3f' % m[k] }} <span class="text-muted small">± {{ '%.3f' % m[k ~ '_std'] }}</span></td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">Decision rule: the dengue alert</h3>
+<p>The plain rule "suggest the most likely diagnosis" treats all errors as equal. They are not: sending a dengue patient home
+  as "chikungunya" may mean NSAIDs and no follow-up of warning signs.</p>
+<div class="callout">
+  <div class="callout-label">Rule</div>
+  Suggest <strong>dengue</strong> whenever P(dengue) ≥ <strong>{{ info.dengue_threshold }}</strong>; otherwise, the most likely
+  diagnosis. The threshold is the highest one that reaches dengue recall ≥ {{ (info.target_dengue_recall * 100)|int }}% on
+  <em>out-of-fold</em> predictions of the training set (never the test set).
+</div>
+{% endblock %}
+
+{% block outputs %}
+<ul class="output-list">
+  <li>Comparison of four algorithms</li>
+  <li>Selected model: <strong>{{ info.model_name }}</strong></li>
+  <li>Dengue alert threshold: <strong>{{ info.dengue_threshold }}</strong></li>
+</ul>
+{% endblock %}
+
+{% block files %}
+{{ file_item("src/train.py", "Models, cross-validation, selection and decision rule") }}
+{% endblock %}

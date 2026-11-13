@@ -1,0 +1,84 @@
+{% extends "phases/_layout.html" %}
+{% from "phases/_macros.html" import file_item, task, metric %}
+
+{% block concept %}
+<p>Raw data are rarely ready for a model. This phase builds the final dataset: it selects rows and columns, cleans and
+  transforms values, and defines the target. It usually takes most of the project time, and mistakes here (especially
+  <strong>data leakage</strong>) make any later result unreliable.</p>
+<ul class="task-list">
+  {{ task("Select the data", "which rows and which columns enter the model.") }}
+  {{ task("Clean the data", "invalid codes, impossible ages, missing values.") }}
+  {{ task("Construct the data", "derived variables and the target.") }}
+  {{ task("Integrate and format", "combine sources into one table the algorithms can use.") }}
+</ul>
+{% endblock %}
+
+{% block implementation %}
+<h3 class="h6">1. Target variable (laboratory criterion only)</h3>
+<div class="table-responsive">
+  <table class="table table-sm">
+    <thead><tr><th>Class</th><th>SINAN rule</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge-soft dx-badge dx-dengue">Dengue</span></td>
+          <td>Final classification 10, 11 or 12 (dengue, with warning signs, severe) · criterion = laboratory</td></tr>
+      <tr><td><span class="badge-soft dx-badge dx-chikungunya">Chikungunya</span></td>
+          <td>Final classification 13 · criterion = laboratory</td></tr>
+      <tr><td><span class="badge-soft dx-badge dx-other_febrile">Other febrile illness</span></td>
+          <td>Final classification 5 (discarded) · criterion = laboratory</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">2. Features ({{ info.features|length }})</h3>
+{% for group, items in BINARY_GROUPS.items() %}
+<div class="small text-muted mb-1">{{ group }}</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% for key, (column, label) in items.items() %}<span class="feature-chip" title="SINAN column {{ column }}">{{ label }}</span>{% endfor %}
+</div>
+{% endfor %}
+<div class="small text-muted mb-1">Derived</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="feature-chip">Age in years (decoded from <code>NU_IDADE_N</code>)</span>
+  <span class="feature-chip">Days since onset (notification − first symptom)</span>
+  <span class="feature-chip">Female sex</span>
+</div>
+<div class="small text-muted mb-1">Epidemiological context</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="feature-chip">State of residence (<code>SG_UF</code>)</span>
+  <span class="feature-chip">Month of consultation</span>
+</div>
+<div class="callout mb-3">
+  <div class="callout-label">Second iteration of this phase</div>
+  With clinical features only, the macro ROC-AUC was about <strong>0.71</strong>, below the 0.80 target. Exploration (Phase 2)
+  had shown that chikungunya concentrates in a few states and that circulation changes by month. Adding <strong>where and
+  when</strong> the patient consults — the local pre-test probability a clinician already uses — raised it above 0.80.
+  Caveat: part of the state effect may reflect each state's laboratory practices.
+</div>
+<p>SINAN codes yes/no as <code>1 = Yes, 2 = No</code>; they become 1/0. Ages outside 0–110 and onset intervals outside
+  0–30 days become missing. All features are numeric, so tree models need no encoding.</p>
+
+<h3 class="h6 mt-4">3. Balanced samples</h3>
+<p>Laboratory-confirmed dengue is ten times more frequent than the other classes. A random sample of
+  <strong>equal size per class</strong> keeps the model from learning only "dengue is the most common", and makes the
+  probabilities comparable across diagnoses.</p>
+<div class="row g-3 mt-1">
+  {% for c in info.classes %}
+  {{ metric(info.class_labels[c], "{:,}".format(info.data.class_counts[c]), "cases " ~ info.data.year) }}
+  {% endfor %}
+  {{ metric("Temporal set", info.data.validation_year|string, "separate balanced sample") }}
+</div>
+{% endblock %}
+
+{% block outputs %}
+<ul class="output-list">
+  <li><code>data/processed/arbovirus_{{ info.data.year }}.parquet</code>: training set</li>
+  <li><code>data/processed/arbovirus_{{ info.data.validation_year }}.parquet</code>: temporal validation set</li>
+  <li>Shared feature definitions for training and the app</li>
+</ul>
+{% endblock %}
+
+{% block files %}
+{{ file_item("src/sinan.py", "Labels, features and balanced sampling") }}
+{{ file_item("src/preprocessing.py", "Feature definitions and decoding") }}
+{{ file_item("src/tulua.py", "Colombian data mapped to the same features") }}
+{% endblock %}

@@ -4,21 +4,22 @@
 {% block content %}
 
 <section class="hero mb-4">
-  <span class="chip mb-3">Machine Learning final project</span>
-  <h1 class="mb-3">Weekly Dengue Case Forecasting in Colombia</h1>
-  <p class="mb-4">Anticipate outbreaks instead of reacting to them: forecast weekly cases from SIVIGILA records
-    (datos.gov.co) and IDEAM weather, and screen febrile patients for probable dengue.</p>
+  <span class="chip mb-3">Machine Learning final project · Smart hospital</span>
+  <h1 class="mb-3">Arbovirus Differential Diagnosis with Explainable AI</h1>
+  <p class="mb-4">For a febrile patient at the first consultation: how likely is it dengue, chikungunya or another febrile
+    illness, and which findings weighed most in that suggestion. Trained on laboratory-confirmed surveillance cases.</p>
   <div class="d-flex flex-wrap gap-2">
-    <a href="{{ url_for('register') }}" class="btn btn-light btn-lg px-4">Screen a patient</a>
+    <a href="{{ url_for('register') }}" class="btn btn-light btn-lg px-4">New consultation</a>
     <a href="{{ url_for('about') }}" class="btn btn-outline-light btn-lg px-4">How the model works</a>
+    <a href="{{ url_for('methodology') }}" class="btn btn-outline-light btn-lg px-4">CRISP-DM methodology</a>
   </div>
 </section>
 
 <div class="row g-3 mb-4">
   {% for endpoint, title, text, icon_name in [
-      ("register", "Register patient", "Enter age, sex and symptoms to get a dengue probability.", "clipboard"),
-      ("patients", "Patients", "Browse and filter every screening that was registered.", "users"),
-      ("about", "About the model", "Metrics, feature importance, validation and limitations.", "chart")] %}
+      ("register", "New consultation", "Symptoms, findings and comorbidities → probability of each arbovirus, with a SHAP explanation.", "clipboard"),
+      ("patients", "Consultations", "Browse and filter every consultation by suggested diagnosis.", "users"),
+      ("about", "About the model", "Metrics per disease, SHAP importance, temporal and Colombian validation.", "chart")] %}
   <div class="col-md-4">
     <a href="{{ url_for(endpoint) }}" class="card card-hover">
       <div class="card-body d-flex gap-3 align-items-start">

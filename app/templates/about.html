@@ -2,16 +2,18 @@
 {% block title %}About the model{% endblock %}
 {% block content %}
 {% set t = info.test_metrics %}
-{% set cm = t.confusion_matrix %}
-{% set threshold_pct = (info.threshold * 100)|round|int %}
+{% set threshold_pct = (info.dengue_threshold * 100)|round|int %}
 <h1 class="h2 mb-1">About the model</h1>
-<p class="text-muted mb-4">Classifier trained with dengue cases reported to SIVIGILA in Tuluá (Valle del Cauca), 2023–2026.</p>
+<p class="text-muted mb-4">Arbovirus differential diagnosis: <strong>dengue</strong>, <strong>chikungunya</strong> or
+  <strong>another febrile illness</strong>, trained with {{ "{:,}".format(info.data.n_total) }} laboratory-confirmed cases from
+  Brazil's SINAN surveillance system ({{ info.data.year }}).</p>
 
 <div class="row g-3 mb-4">
+  {% set dengue_recall = t.per_class[0].recall %}
   {% for label, value in [("Model", info.model_name),
-                          ("Training cases", "{:,}".format(info.data.n_total)),
-                          ("ROC-AUC (test)", "%.2f" % t.roc_auc),
-                          ("Dengue recall (test)", "%.0f%%" % (t.recall * 100))] %}
+                          ("Macro ROC-AUC (test)", "%.2f" % t.roc_auc),
+                          ("Balanced accuracy", "%.0f%%" % (t.balanced_accuracy * 100)),
+                          ("Dengue recall", "%.0f%%" % (dengue_recall * 100))] %}
   <div class="col-6 col-lg-3">
     <div class="card stat h-100">
       <div class="label">{{ label }}</div>
@@ -25,72 +27,115 @@
   <div class="col-lg-6">
     <div class="card h-100"><div class="card-body p-4">
       <h2 class="h5">What does it predict?</h2>
-      <p>Among patients <strong>with fever</strong> reported as suspected dengue cases, it estimates the probability that the case
-        is <strong>confirmed dengue</strong> (by laboratory testing or epidemiological link) and not a <strong>discarded</strong> case.</p>
+      <p>For a <strong>febrile patient</strong>, the probability that the illness is each of three diagnoses:</p>
       <ul class="small">
-        <li><strong>Inputs:</strong> age group, sex, and {{ SYMPTOM_LABELS|length }} symptoms that the patient can report.</li>
-        <li><strong>Excluded:</strong> fever (present in 100% of cases), laboratory tests, and variables
-          known after diagnosis (shock, organ damage, hospitalization…), to avoid data leakage.</li>
-        <li><strong>Data:</strong> {{ "{:,}".format(info.data.n_total) }} cases,
-          {{ '%.0f' % (info.data.dengue_prevalence * 100) }}% confirmed dengue. Source: {{ info.data.source }}.</li>
-        <li><strong>Decision threshold: {{ threshold_pct }}%</strong>. It was selected to detect at least
-          {{ (info.target_recall * 100)|int }}% of dengue cases: in screening, missing a dengue case is more serious than a false alarm.</li>
+        <li><strong>Dengue</strong> and <strong>Chikungunya</strong>: laboratory-confirmed cases.</li>
+        <li><strong>Other febrile illness</strong>: suspected arbovirus cases that the laboratory ruled out.</li>
+        <li><strong>Inputs ({{ info.features|length }}):</strong> age, sex, days since onset, 11 symptoms, 3 clinical/laboratory
+          findings (petechiae, tourniquet test, leukopenia), 7 comorbidities and the epidemiological context
+          (state of residence and month).</li>
+        <li><strong>Decision rule:</strong> the most likely diagnosis, except that <strong>dengue is suggested whenever
+          P(dengue) ≥ {{ threshold_pct }}%</strong>. That threshold catches at least {{ (info.target_dengue_recall * 100)|int }}% of dengue
+          cases: missing dengue is the most dangerous error.</li>
+        <li><strong>Explainability:</strong> every result shows the SHAP contribution of each finding.</li>
       </ul>
 
       <h2 class="h5 mt-4">Results on test data</h2>
       <p class="small text-muted">20% of the cases, reserved and never used for training ({{ "{:,}".format(info.data.n_test) }} cases).</p>
       <table class="table table-sm">
-        <thead><tr><th>Metric</th><th class="text-end">Threshold {{ threshold_pct }}%</th><th class="text-end">Threshold 50%</th></tr></thead>
+        <thead><tr><th>Diagnosis</th><th class="text-end">Recall</th><th class="text-end">Precision</th><th class="text-end">F1</th><th class="text-end">ROC-AUC</th></tr></thead>
         <tbody>
-          {% for key, label in [("accuracy", "Accuracy"), ("precision", "Precision"), ("recall", "Sensitivity / recall (dengue)"),
-                                ("specificity", "Specificity"), ("f1", "F1"), ("roc_auc", "ROC-AUC")] %}
-          <tr><td>{{ label }}</td><td class="text-end fw-semibold">{{ '%.3f' % t[key] }}</td>
-              <td class="text-end text-muted">{{ '%.3f' % info.test_metrics_threshold_05[key] }}</td></tr>
+          {% for c in t.per_class %}
+          <tr><td><span class="badge-soft dx-badge dx-{{ c['class'] }}">{{ c.label }}</span></td>
+              <td class="text-end fw-semibold">{{ '%.3f' % c.recall }}</td><td class="text-end">{{ '%.3f' % c.precision }}</td>
+              <td class="text-end">{{ '%.3f' % c.f1 }}</td><td class="text-end">{{ '%.3f' % c.roc_auc }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
 
-      <h2 class="h6 mt-4">Confusion matrix (threshold {{ threshold_pct }}%)</h2>
-      <table class="table text-center matrix small mb-0">
-        <thead><tr><th></th><th>Predicted: No dengue</th><th>Predicted: Dengue</th></tr></thead>
-        <tbody>
-          <tr><th class="align-middle">Actual: No dengue</th><td class="ok">{{ cm[0][0] }}<span>true negatives</span></td>
-              <td class="err">{{ cm[0][1] }}<span>false positives</span></td></tr>
-          <tr><th class="align-middle">Actual: Dengue</th><td class="err">{{ cm[1][0] }}<span>false negatives</span></td>
-              <td class="ok">{{ cm[1][1] }}<span>true positives</span></td></tr>
-        </tbody>
-      </table>
+      <h2 class="h6 mt-4">Confusion matrix (rows = actual, columns = suggested)</h2>
+      <div class="table-responsive">
+        <table class="table text-center matrix small mb-0">
+          <thead><tr><th></th>{% for c in info.classes %}<th>{{ info.class_labels[c] }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in t.confusion_matrix %}
+            {% set i = loop.index0 %}
+            <tr><th class="align-middle">{{ info.class_labels[info.classes[i]] }}</th>
+              {% for v in row %}<td class="{{ 'ok' if loop.index0 == i else 'err' }}">{{ v }}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div></div>
   </div>
 
   <div class="col-lg-6">
     <div class="card h-100"><div class="card-body p-4">
       <h2 class="h5">Model comparison</h2>
-      <p class="small text-muted">5-fold stratified cross-validation, threshold 50%. The model with the highest ROC-AUC was selected.</p>
+      <p class="small text-muted">5-fold stratified cross-validation. Logistic Regression is the linear baseline; the tree model with the highest macro ROC-AUC was selected.</p>
       <div class="table-responsive">
         <table class="table table-sm">
-          <thead><tr><th>Model</th><th class="text-end">Accuracy</th><th class="text-end">Precision</th><th class="text-end">Recall</th><th class="text-end">F1</th><th class="text-end">ROC-AUC</th></tr></thead>
+          <thead><tr><th>Model</th><th class="text-end">ROC-AUC</th><th class="text-end">Bal. acc.</th><th class="text-end">F1 macro</th><th class="text-end">Log-loss</th></tr></thead>
           <tbody>
             {% for m in info.cv_metrics %}
             <tr class="{{ 'table-active fw-semibold' if m.model == info.model_name }}">
               <td>{{ m.model }}</td>
-              {% for k in ["accuracy", "precision", "recall", "f1", "roc_auc"] %}<td class="text-end">{{ '%.3f' % m[k] }}</td>{% endfor %}
+              {% for k in ["roc_auc", "balanced_accuracy", "f1_macro", "log_loss"] %}<td class="text-end">{{ '%.3f' % m[k] }}</td>{% endfor %}
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
 
-      <h2 class="h5 mt-4">Feature importance</h2>
-      <p class="small text-muted">How much the ROC-AUC worsens when each feature is randomly shuffled (permutation importance).</p>
-      {% set maximum = info.importance[0].importance %}
-      {% for v in info.importance %}
+      <h2 class="h5 mt-4">What drives the diagnosis? (SHAP)</h2>
+      <p class="small text-muted">Mean absolute SHAP value per finding on the test set, split by diagnosis.</p>
+      {% set maximum = info.shap_importance[0].total %}
+      {% for v in info.shap_importance[:12] %}
         <div class="d-flex align-items-center gap-2 mb-2 small">
           <div class="importance-label">{{ v.label }}</div>
-          <div class="importance-track"><div class="importance-bar" style="width: {{ [v.importance / maximum * 100, 0]|max }}%"></div></div>
-          <div class="importance-value text-end">{{ '%.3f' % v.importance }}</div>
+          <div class="importance-track stacked">
+            {% for c in info.classes %}<div class="dx-bar dx-{{ c }}" style="width: {{ v[c] / maximum * 100 }}%" title="{{ info.class_labels[c] }}: {{ v[c] }}"></div>{% endfor %}
+          </div>
+          <div class="importance-value text-end">{{ '%.2f' % v.total }}</div>
         </div>
       {% endfor %}
+      <div class="d-flex flex-wrap gap-3 small mt-2">
+        {% for c in info.classes %}<span><span class="legend-dot dx-bar dx-{{ c }}"></span>{{ info.class_labels[c] }}</span>{% endfor %}
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-4 mt-0">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body p-4">
+      {% set tv = info.temporal_validation %}
+      <h2 class="h5">Temporal validation</h2>
+      <p class="small">{{ tv.scenario }} ({{ "{:,}".format(tv.n_test) }} cases): macro ROC-AUC <strong>{{ '%.3f' % tv.roc_auc }}</strong>,
+        balanced accuracy <strong>{{ '%.0f%%' % (tv.balanced_accuracy * 100) }}</strong>.</p>
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Diagnosis</th><th class="text-end">Recall</th><th class="text-end">ROC-AUC</th></tr></thead>
+        <tbody>{% for c in tv.per_class %}<tr><td>{{ c.label }}</td><td class="text-end">{{ '%.3f' % c.recall }}</td><td class="text-end">{{ '%.3f' % c.roc_auc }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body p-4">
+      {% set ev = info.external_validation %}
+      <h2 class="h5">External validation in Colombia</h2>
+      {% if ev %}
+      <p class="small">{{ ev.source }}: {{ "{:,}".format(ev.n) }} dengue suspects, {{ '%.0f%%' % (ev.dengue_share * 100) }} confirmed.
+        The Colombian form records only 7 of the model's symptoms; the rest are treated as "not reported", and there is no
+        Brazilian state of residence.</p>
+      <div class="row g-2">
+        {% for label, value in [("Dengue ROC-AUC", "%.3f" % ev.roc_auc_dengue), ("Dengue recall", "%.0f%%" % (ev.dengue_recall * 100)),
+                                ("Specificity", "%.0f%%" % (ev.specificity * 100))] %}
+        <div class="col-4"><div class="mini-stat h-100"><div class="label">{{ label }}</div><div class="value">{{ value }}</div></div></div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="small text-muted mb-0">Not available: the Tuluá dataset was not present when the model was trained.</p>
+      {% endif %}
     </div></div>
   </div>
 </div>
@@ -99,15 +144,20 @@
   <div class="card-body p-4">
     <h2 class="h5">Limitations</h2>
     <ul class="mb-0">
-      <li><strong>Moderate predictive performance</strong> (ROC-AUC ≈ {{ '%.2f' % t.roc_auc }}). Dengue symptoms are similar to those of other
-        febrile infections; therefore, the actual diagnosis requires laboratory testing. It is a <strong>screening</strong> tool, not a diagnostic tool.</li>
-      <li>Many <strong>false alarms</strong>: with the selected threshold, only {{ '%.0f' % (t.specificity * 100) }}% of cases without dengue are correctly classified.</li>
-      <li><strong>Changes over time:</strong>
-        {% for v in info.temporal_validation %}{{ v.scenario }}: ROC-AUC {{ '%.2f' % v.roc_auc }}{{ '; ' if not loop.last else '.' }}{% endfor %}
-        It works with the 2023–2024 pattern, but not with 2025–2026 (post-epidemic period). It must be retrained periodically.</li>
-      <li>Data from a single municipality, and age is only available in ranges.</li>
+      <li><strong>Decision support, not diagnosis.</strong> Arboviruses share most symptoms; confirmation requires laboratory tests (NS1, RT-PCR, serology).</li>
+      <li><strong>Zika is not modeled:</strong> its public notification form has no clinical fields, so there is nothing to learn from.</li>
+      <li><strong>"Other febrile illness"</strong> comes from chikungunya suspects ruled out by the laboratory, because Brazil's public dengue files do not include discarded cases.</li>
+      <li><strong>No numeric lab values:</strong> public surveillance data record leukopenia and the tourniquet test as yes/no, not as platelet or white-cell counts.</li>
+      <li><strong>Trained in Brazil.</strong> On Colombian data (Tuluá) its dengue signal is close to chance, partly because the
+        Colombian form lacks most of the model's findings. It must be retrained with local data before real use.</li>
+      <li><strong>Epidemiological context carries much of the performance.</strong> With clinical findings alone the macro ROC-AUC
+        was about 0.71; the patient's state of residence and month (local circulation) raise it above 0.80. That is legitimate
+        pre-test probability, but part of the state effect may reflect how each state's laboratories test and close cases.</li>
+      <li><strong>"Days since onset"</strong> is measured in SINAN up to the <em>notification</em>, not the consultation, so part of its
+        weight may reflect reporting habits rather than the disease.</li>
+      <li><strong>"Other febrile illness" is the hardest class</strong> (lowest recall): it is a mix of many diseases with no typical pattern.</li>
     </ul>
   </div>
 </div>
-<p class="small text-muted mt-3">Trained on {{ info.trained_at[:10] }} with scikit-learn {{ info.sklearn_version }}.</p>
+<p class="small text-muted mt-3">Trained on {{ info.trained_at[:10] }} · scikit-learn {{ info.versions['scikit-learn'] }} · XGBoost {{ info.versions.xgboost }} · LightGBM {{ info.versions.lightgbm }}.</p>
 {% endblock %}

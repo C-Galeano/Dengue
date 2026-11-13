@@ -1,0 +1,84 @@
+{% extends "phases/_layout.html" %}
+{% from "phases/_macros.html" import file_item, task %}
+
+{% block concept %}
+<p>A model creates value only when its users can apply it. Deployment can be as simple as a report or as complex as an
+  application integrated into daily work. It also includes planning how the model will be <strong>monitored and
+  maintained</strong>, because data change over time.</p>
+<ul class="task-list">
+  {{ task("Plan the deployment", "how the model reaches its users.") }}
+  {{ task("Plan monitoring and maintenance", "how to detect that the model is getting worse, and when to retrain.") }}
+  {{ task("Produce the final report", "documentation and presentation of the results.") }}
+  {{ task("Review the project", "lessons learned for the next iteration.") }}
+</ul>
+{% endblock %}
+
+{% block implementation %}
+<h3 class="h6">A smart-hospital module for the first consultation</h3>
+<p>This Flask application <em>is</em> the deployment. The clinician registers a febrile patient and, in seconds, gets the
+  probability of each arbovirus, the suggested diagnosis, <strong>why</strong> the model suggests it, and the next steps.</p>
+
+<div class="pipeline-flow mb-3" aria-label="Request flow">
+  <div class="flow-step"><strong>Consultation form</strong><span>age, sex, day of illness</span><span>symptoms, findings, comorbidities</span></div>
+  <div class="flow-step"><strong>Validation</strong><span>on the server</span></div>
+  <div class="flow-step"><strong>Model</strong><span>3 probabilities</span><span>dengue alert ≥ {{ info.dengue_threshold }}</span></div>
+  <div class="flow-step"><strong>SHAP</strong><span>top findings for the suggestion</span></div>
+  <div class="flow-step is-final"><strong>Result page</strong><span>diagnosis, explanation, next steps</span></div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Page</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><a href="{{ url_for('register') }}">/register</a></td><td>New consultation: patient data and clinical findings</td></tr>
+      <tr><td>/result/&lt;id&gt;</td><td>Probabilities, suggested diagnosis, SHAP explanation and suggested next steps</td></tr>
+      <tr><td><a href="{{ url_for('patients') }}">/patients</a></td><td>All consultations, filterable by suggested diagnosis</td></tr>
+      <tr><td><a href="{{ url_for('about') }}">/about</a></td><td>Model card: metrics, SHAP importance, validations and limitations</td></tr>
+      <tr><td><a href="{{ url_for('methodology') }}">/methodology</a></td><td>These CRISP-DM pages</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">Design decisions</h3>
+<ul>
+  <li><strong>Explanations without extra weight:</strong> XGBoost and LightGBM compute exact SHAP values natively, so the
+    server does not need the <code>shap</code> package.</li>
+  <li><strong>One artifact:</strong> <code>models/model.pkl</code> holds the model, threshold, labels and metrics; it is loaded
+    once at startup.</li>
+  <li><strong>Same features everywhere:</strong> <code>src/preprocessing.py</code> builds the patient row exactly like the training data.</li>
+  <li><strong>Flexible storage:</strong> findings, probabilities and explanations are saved as JSON, so adding a field does not
+    require a database migration. SQLite locally, PostgreSQL in production via <code>DATABASE_URL</code>.</li>
+  <li><strong>Server-side validation</strong> and <strong>Post/Redirect/Get</strong> (reloading never registers twice).</li>
+  <li><strong>Pinned versions</strong> of scikit-learn {{ info.versions['scikit-learn'] }}, XGBoost {{ info.versions.xgboost }}
+    and LightGBM {{ info.versions.lightgbm }}, the ones used in training.</li>
+  <li><strong>Mandatory notice</strong> on every page: decision support only.</li>
+</ul>
+
+<h3 class="h6 mt-4">Monitoring and maintenance</h3>
+<ul class="mb-0">
+  <li><strong>Retrain</strong> each year with <code>python -m src.sinan</code> and <code>python -m src.train</code>. The current model
+    was trained on {{ info.trained_at[:10] }}.</li>
+  <li><strong>Watch for drift:</strong> compare the share of each suggested diagnosis with the circulation reported by the
+    surveillance system; a large gap means the model must be reviewed.</li>
+  <li><strong>Close the loop:</strong> store the laboratory result of each consultation, so the hospital builds its own labeled
+    dataset (with numeric lab values) for the next iteration.</li>
+</ul>
+{% endblock %}
+
+{% block outputs %}
+<ul class="output-list">
+  <li>Web app: consultation, result with SHAP, history</li>
+  <li>Database of consultations</li>
+  <li>Render deployment configuration</li>
+  <li>Monitoring and retraining plan</li>
+</ul>
+{% endblock %}
+
+{% block files %}
+{{ file_item("app.py", "Routes") }}
+{{ file_item("src/prediction.py", "Model, decision rule and next steps") }}
+{{ file_item("src/explain.py", "Per-patient SHAP explanation") }}
+{{ file_item("src/validation.py", "Server-side form validation") }}
+{{ file_item("src/database.py", "Consultations table (SQLAlchemy)") }}
+{{ file_item("render.yaml", "Render deployment") }}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Methodology{% endblock %}
+{% block content %}
+<h1 class="h2 mb-1">Methodology: CRISP-DM</h1>
+<p class="text-muted mb-4" style="max-width: 70ch;">The project follows <strong>CRISP-DM</strong> (Cross-Industry Standard
+  Process for Data Mining), the most widely used process for data science projects. It has six phases. Each one has its own
+  page explaining what the phase is and how this project implements it, plus a notebook in <code>notebooks/</code>.</p>
+
+<div class="row g-3 mb-4">
+  {% for p in phases %}
+  <div class="col-md-6 col-lg-4">
+    <a href="{{ url_for('phase', number=p.number) }}" class="card card-hover">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="icon-tile">{{ icon(p.icon) }}</span>
+          <div>
+            <div class="phase-kicker">Phase {{ p.number }}</div>
+            <h2 class="h5 mb-0">{{ p.name }}</h2>
+          </div>
+        </div>
+        <p class="fw-semibold small mb-1">{{ p.question }}</p>
+        <p class="small text-muted mb-3">{{ p.summary }}</p>
+        <span class="small fw-semibold text-brand">Read the phase {{ icon("arrow") }}</span>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-body p-4">
+    <h2 class="h5">An iterative cycle</h2>
+    <p class="mb-2">CRISP-DM is not a straight line. In this project:</p>
+    <ul class="mb-0">
+      <li><strong>Iteration 1:</strong> weekly dengue forecasting → binary dengue screening with Colombian data (Tuluá).</li>
+      <li><strong>Phase 5 → Phase 1:</strong> the evaluation judged the binary model too narrow. The objective was widened to a
+        "smart hospital" differential diagnosis among arboviruses, with explanations for the clinician.</li>
+      <li><strong>Phase 1 → Phase 2:</strong> no Colombian source has symptoms for Zika or chikungunya, so the data search moved to
+        Brazil's SINAN, and the Tuluá data became an external validation set.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

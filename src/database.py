@@ -12,34 +12,38 @@ def now_colombia():
 
 
 class Patient(db.Model):
-    __tablename__ = "patients"
+    """One consultation: patient data, clinical findings and the model's differential diagnosis.
+
+    Stored in the "consultations" table (the earlier dengue-only version used "patients").
+    """
+    __tablename__ = "consultations"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     # Not unique: the same person can be registered for multiple consultations.
     document = db.Column(db.String(15), nullable=False, index=True)
     age = db.Column(db.Integer, nullable=False)
-    sex = db.Column(db.String(1), nullable=False)  # "F" or "M", as in SIVIGILA
+    sex = db.Column(db.String(1), nullable=False)  # "F" or "M"
+    days_since_onset = db.Column(db.Integer, nullable=False)
     registered_at = db.Column(db.DateTime, nullable=False, default=now_colombia)
 
-    # Symptoms (booleans): same names as the model variables
-    headache = db.Column(db.Boolean, nullable=False, default=False)
-    retro_orbital_pain = db.Column(db.Boolean, nullable=False, default=False)
-    myalgia = db.Column(db.Boolean, nullable=False, default=False)
-    arthralgia = db.Column(db.Boolean, nullable=False, default=False)
-    rash = db.Column(db.Boolean, nullable=False, default=False)
-    abdominal_pain = db.Column(db.Boolean, nullable=False, default=False)
-    vomiting = db.Column(db.Boolean, nullable=False, default=False)
-    diarrhea = db.Column(db.Boolean, nullable=False, default=False)
-    drowsiness = db.Column(db.Boolean, nullable=False, default=False)
-    mucosal_bleeding = db.Column(db.Boolean, nullable=False, default=False)
+    # {feature: bool} for symptoms, clinical/laboratory findings and comorbidities (src/preprocessing.py)
+    findings = db.Column(db.JSON, nullable=False, default=dict)
 
-    probability = db.Column(db.Float, nullable=False)  # 0 to 1
-    result = db.Column(db.String(20), nullable=False, index=True)  # "Probable dengue" / "Unlikely"
+    # Model output
+    probabilities = db.Column(db.JSON, nullable=False)                 # {class: probability}
+    prediction = db.Column(db.String(20), nullable=False, index=True)  # dengue / chikungunya / other_febrile
+    dengue_alert = db.Column(db.Boolean, nullable=False, default=False)
+    explanation = db.Column(db.JSON, nullable=False, default=list)     # SHAP contributions
 
-    def symptoms(self, labels):
-        """List of present symptoms, with their readable names."""
-        return [label for key, label in labels.items() if getattr(self, key)]
+    def present(self, labels):
+        """Readable names of the findings marked as present."""
+        return [label for key, label in labels.items() if self.findings.get(key)]
+
+    @property
+    def probability(self):
+        """Probability of the suggested diagnosis."""
+        return self.probabilities[self.prediction]
 
     def __repr__(self):
-        return f"<Patient {self.id} {self.document} {self.result}>"
+        return f"<Consultation {self.id} {self.document} {self.prediction}>"

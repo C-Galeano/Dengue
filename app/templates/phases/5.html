@@ -1,0 +1,115 @@
+{% extends "phases/_layout.html" %}
+{% from "phases/_macros.html" import file_item, task, metric %}
+
+{% block concept %}
+<p>Phase 4 asked "which model is technically best?". This phase asks a different question: <strong>does the model meet the
+  success criteria</strong> defined in Phase 1? It uses data the model has never seen, checks that its reasoning makes clinical
+  sense, and ends with a decision: deploy, iterate, or start a new project.</p>
+<ul class="task-list">
+  {{ task("Evaluate the results", "against the success criteria, on unseen data.") }}
+  {{ task("Review the process", "anything overlooked, any leakage, any doubtful step.") }}
+  {{ task("Determine next steps", "deploy, go back to an earlier phase, or both.") }}
+</ul>
+{% endblock %}
+
+{% block implementation %}
+{% set t = info.test_metrics %}
+{% set base = info.cv_metrics[0] %}
+{% set best = info.cv_metrics|selectattr("model", "equalto", info.model_name)|first %}
+{% set tv = info.temporal_validation %}
+{% set ev = info.external_validation %}
+<h3 class="h6">Results on the test set ({{ "{:,}".format(info.data.n_test) }} cases never seen)</h3>
+<div class="row g-3 my-2">
+  {{ metric("Macro ROC-AUC", "%.2f" % t.roc_auc, "ranking quality") }}
+  {{ metric("Balanced accuracy", "%.0f%%" % (t.balanced_accuracy * 100), "chance = 33%") }}
+  {% for c in t.per_class[:2] %}{{ metric(c.label ~ " recall", "%.0f%%" % (c.recall * 100)) }}{% endfor %}
+</div>
+
+<div class="table-responsive">
+  <table class="table text-center matrix small my-3">
+    <thead><tr><th></th>{% for c in info.classes %}<th>Suggested: {{ info.class_labels[c] }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in t.confusion_matrix %}
+      {% set i = loop.index0 %}
+      <tr><th class="align-middle">Actual: {{ info.class_labels[info.classes[i]] }}</th>
+        {% for v in row %}<td class="{{ 'ok' if loop.index0 == i else 'err' }}">{{ v }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">Review against the success criteria</h3>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Criterion</th><th class="text-end">Value</th><th class="text-end">Met?</th></tr></thead>
+    <tbody>
+      {% set rows = [
+          ("Dengue recall ≥ %d%% (test)" % (info.target_dengue_recall * 100), "%.3f" % t.per_class[0].recall, t.per_class[0].recall >= info.target_dengue_recall),
+          ("Macro ROC-AUC ≥ 0.80 (test)", "%.3f" % t.roc_auc, t.roc_auc >= 0.80),
+          ("Better than the linear baseline (CV ROC-AUC)", "%.3f vs %.3f" % (best.roc_auc, base.roc_auc), best.roc_auc > base.roc_auc),
+          ("Holds in a later year (%s): ROC-AUC ≥ 0.70" % info.data.validation_year, "%.3f" % tv.roc_auc, tv.roc_auc >= 0.70),
+          ("Explanation for every prediction (SHAP)", "TreeSHAP", true)] %}
+      {% if ev %}{% set rows = rows + [("Transfers to Colombia (Tuluá): dengue ROC-AUC ≥ 0.70", "%.3f" % ev.roc_auc_dengue, ev.roc_auc_dengue >= 0.70)] %}{% endif %}
+      {% for label, value, met in rows %}
+      <tr><td>{{ label }}</td><td class="text-end">{{ value }}</td>
+          <td class="text-end"><span class="badge-soft {{ 'is-ok' if met else 'is-probable' }}">{{ 'Yes' if met else 'No' }}</span></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">Explainability: what drives each diagnosis? (SHAP)</h3>
+<p class="small">Mean |SHAP| on the test set, split by diagnosis. A clinician can check that the model relies on clinically
+  sensible findings (for example joint pain and arthritis for chikungunya, leukopenia for dengue) and on local circulation
+  (state and month), and not on artifacts.</p>
+{% set maximum = info.shap_importance[0].total %}
+{% for v in info.shap_importance[:8] %}
+<div class="d-flex align-items-center gap-2 mb-2 small">
+  <div class="importance-label">{{ v.label }}</div>
+  <div class="importance-track stacked">
+    {% for c in info.classes %}<div class="dx-bar dx-{{ c }}" style="width: {{ v[c] / maximum * 100 }}%"></div>{% endfor %}
+  </div>
+  <div class="importance-value text-end">{{ '%.2f' % v.total }}</div>
+</div>
+{% endfor %}
+<div class="d-flex flex-wrap gap-3 small mt-2 mb-3">
+  {% for c in info.classes %}<span><span class="legend-dot dx-bar dx-{{ c }}"></span>{{ info.class_labels[c] }}</span>{% endfor %}
+</div>
+
+<h3 class="h6 mt-4">Robustness</h3>
+<div class="table-responsive">
+  <table class="table table-sm">
+    <thead><tr><th>Check</th><th class="text-end">Cases</th><th class="text-end">Result</th></tr></thead>
+    <tbody>
+      <tr><td>Temporal: {{ tv.scenario }}</td><td class="text-end">{{ "{:,}".format(tv.n_test) }}</td>
+          <td class="text-end">macro ROC-AUC <strong>{{ '%.3f' % tv.roc_auc }}</strong></td></tr>
+      {% if ev %}
+      <tr><td>External, Colombia: dengue vs discarded in Tuluá</td><td class="text-end">{{ "{:,}".format(ev.n) }}</td>
+          <td class="text-end">dengue ROC-AUC <strong>{{ '%.3f' % ev.roc_auc_dengue }}</strong></td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="callout mt-3">
+  <div class="callout-label">Decision</div>
+  The model is deployed as a <strong>decision-support tool</strong> for the first consultation, with the dengue alert and a
+  SHAP explanation on every result. It is not a diagnostic test. Following the CRISP-DM cycle, the next iteration should add
+  numeric laboratory values (platelets, white cells, hematocrit) from hospital records and retrain with Colombian data.
+</div>
+{% endblock %}
+
+{% block outputs %}
+<ul class="output-list">
+  <li>Test metrics per diagnosis</li>
+  <li>Global SHAP explainability</li>
+  <li>Temporal and external (Colombia) validation</li>
+  <li>Decision: deploy as decision support</li>
+</ul>
+{% endblock %}
+
+{% block files %}
+{{ file_item("src/train.py", "Metrics, temporal and external validation") }}
+{{ file_item("src/explain.py", "SHAP values (TreeSHAP)") }}
+{{ file_item("models/metrics.json", "All evaluation results") }}
+{% endblock %}

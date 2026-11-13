@@ -1,0 +1,80 @@
+{% extends "phases/_layout.html" %}
+{% from "phases/_macros.html" import file_item, task, metric %}
+
+{% block concept %}
+<p>Before modeling, we must know the data: what each column means, how complete and reliable it is, and which variables could
+  explain the target. Problems found here (missing classes, leakage, unreliable labels) shape every later phase.
+  <strong>No model is trained in this phase.</strong></p>
+<ul class="task-list">
+  {{ task("Collect the initial data", "find and download the sources.") }}
+  {{ task("Describe the data", "rows, columns, types and meaning of the codes.") }}
+  {{ task("Explore the data", "distributions and relationships with the target.") }}
+  {{ task("Verify data quality", "missing values, unreliable labels, inconsistent codes.") }}
+</ul>
+{% endblock %}
+
+{% block implementation %}
+<h3 class="h6">Searching for data</h3>
+<p>The model needs, for each patient, <strong>clinical findings</strong> and a <strong>confirmed diagnosis</strong> among
+  several arboviruses. We reviewed the public sources:</p>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Source</th><th>Diseases</th><th>Symptoms</th><th>Lab</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>SIVIGILA Tuluá (Colombia)</td><td>Dengue only</td><td>Yes</td><td>Yes/no</td>
+          <td><span class="badge-soft is-ok">External validation</span></td></tr>
+      <tr><td>Medellín Zika and Chikungunya (Colombia)</td><td>Zika, Chik</td><td>No</td><td>No</td>
+          <td><span class="badge-soft is-probable">Not usable</span></td></tr>
+      <tr><td><strong>SINAN (Brazil, DATASUS)</strong></td><td>Dengue + Chik (same form); Zika separate</td><td>Yes (11)</td><td>Yes/no</td>
+          <td><span class="badge-soft is-ok">Training</span></td></tr>
+    </tbody>
+  </table>
+</div>
+<p class="small text-muted">SINAN files are <code>.dbc</code> (compressed dBase). The usual readers need a C compiler, so the
+  project includes its own pure-Python reader (<code>src/dbc.py</code>), shown below.</p>
+
+<div class="row g-3 my-3">
+  {{ metric("Records read", "3.8 M", "dengue + chik, 2023 and 2025") }}
+  {{ metric("Fields used", (info.features|length|string), "of 122 in the form") }}
+  {{ metric("Missing values", "0%", "in symptoms") }}
+  {{ metric("Platelet counts", "0%", "filled: not usable") }}
+</div>
+
+<h3 class="h6 mt-4">Key findings</h3>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Finding</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Dengue and chikungunya share the same notification form: identical symptoms, findings and comorbidities.</td>
+          <td>Their records can be combined into one dataset.</td></tr>
+      <tr><td>The Zika form has only 38 administrative columns, with <strong>no clinical fields</strong>.</td>
+          <td>Zika cannot be learned from symptoms: excluded.</td></tr>
+      <tr><td>Most cases are closed by <strong>clinical-epidemiological</strong> criterion, i.e. from the same symptoms.</td>
+          <td>Only <strong>laboratory</strong>-closed cases are used, so the label does not depend on the inputs.</td></tr>
+      <tr><td>Brazil's public dengue files contain <strong>no discarded cases</strong>.</td>
+          <td>"Other febrile illness" comes from chikungunya suspects ruled out by the laboratory.</td></tr>
+      <tr><td>Numeric lab values (<code>PLAQ_MENOR</code>, lowest platelet count) are empty in 100% of records.</td>
+          <td>Lab information enters as yes/no: leukopenia and tourniquet test.</td></tr>
+      <tr><td>Severity and warning-sign fields are filled only for dengue cases.</td>
+          <td>Excluded: they would reveal the label (data leakage).</td></tr>
+      <tr><td>Clear clinical signal: joint pain in 52% of chikungunya vs 16% of dengue; leukopenia twice as frequent in dengue.</td>
+          <td>Symptoms do carry information to separate the diseases.</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block outputs %}
+<ul class="output-list">
+  <li>Inventory of public sources</li>
+  <li>SINAN data dictionary and code meanings</li>
+  <li>Label-quality decision: laboratory criterion only</li>
+  <li>Classification of variables: use / exclude / leakage</li>
+</ul>
+{% endblock %}
+
+{% block files %}
+{{ file_item("src/dbc.py", "Pure-Python reader of DATASUS .dbc files") }}
+{{ file_item("src/sinan.py", "Download and summary of SINAN files") }}
+{{ file_item("data/processed/arbovirus_2023_summary.json", "Raw counts by classification and criterion") }}
+{% endblock %}

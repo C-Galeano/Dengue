@@ -1,11 +1,12 @@
 """Creation and configuration of the Flask application (database, model, templates)."""
 import os
+from datetime import datetime
 
 from flask import Flask
 
 from src.database import db
-from src.prediction import PROBABLE, Predictor
-from src.preprocessing import ROOT_DIR, SYMPTOM_LABELS
+from src.prediction import NEXT_STEPS, Predictor
+from src.preprocessing import BINARY_GROUPS, CLASS_LABELS, CLASSES, FEATURE_LABELS, MONTHS, ROOT_DIR, STATES
 
 
 def database_url():
@@ -36,6 +37,8 @@ def create_app():
     @app.context_processor
     def global_variables():
         """Available in all templates."""
-        return {"SYMPTOM_LABELS": SYMPTOM_LABELS, "PROBABLE": PROBABLE}
+        return {"CLASSES": CLASSES, "CLASS_LABELS": CLASS_LABELS, "FEATURE_LABELS": FEATURE_LABELS,
+                "BINARY_GROUPS": BINARY_GROUPS, "NEXT_STEPS": NEXT_STEPS, "STATES": STATES, "MONTHS": MONTHS,
+                "CURRENT_MONTH": datetime.now().month}
 
     return app

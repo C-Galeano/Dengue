@@ -1,215 +1,505 @@
 {
-  "model_name": "Gradient Boosting",
+  "model_name": "LightGBM",
   "features": [
-    "age_group",
-    "sex",
+    "age",
+    "days_since_onset",
+    "sex_female",
+    "state",
+    "month",
+    "fever",
     "headache",
     "retro_orbital_pain",
     "myalgia",
     "arthralgia",
+    "arthritis",
+    "back_pain",
     "rash",
-    "abdominal_pain",
+    "conjunctivitis",
+    "nausea",
     "vomiting",
-    "diarrhea",
-    "drowsiness",
-    "mucosal_bleeding"
+    "petechiae",
+    "tourniquet_test",
+    "leukopenia",
+    "diabetes",
+    "hypertension",
+    "kidney_disease",
+    "liver_disease",
+    "hematologic_disease",
+    "peptic_ulcer",
+    "autoimmune_disease"
   ],
-  "threshold": 0.41,
-  "age_groups": [
-    "0-5",
-    "6-11",
-    "12-17",
-    "18-28",
-    "29-59",
-    "60+"
-  ],
-  "symptom_labels": {
+  "feature_labels": {
+    "age": "Age",
+    "days_since_onset": "Days since symptom onset",
+    "sex_female": "Female sex",
+    "state": "State of residence",
+    "month": "Month of consultation",
+    "fever": "Fever",
     "headache": "Headache",
     "retro_orbital_pain": "Pain behind the eyes",
     "myalgia": "Muscle pain",
     "arthralgia": "Joint pain",
-    "rash": "Skin rash or spots",
-    "abdominal_pain": "Abdominal pain",
+    "arthritis": "Joint swelling (arthritis)",
+    "back_pain": "Back pain",
+    "rash": "Skin rash",
+    "conjunctivitis": "Red eyes (conjunctivitis)",
+    "nausea": "Nausea",
     "vomiting": "Vomiting",
-    "diarrhea": "Diarrhea",
-    "drowsiness": "Drowsiness or fatigue",
-    "mucosal_bleeding": "Bleeding gums or nose"
+    "petechiae": "Petechiae (small red skin spots)",
+    "tourniquet_test": "Positive tourniquet test",
+    "leukopenia": "Leukopenia (low white blood cells)",
+    "diabetes": "Diabetes",
+    "hypertension": "Hypertension",
+    "kidney_disease": "Chronic kidney disease",
+    "liver_disease": "Liver disease",
+    "hematologic_disease": "Blood disorder",
+    "peptic_ulcer": "Peptic ulcer",
+    "autoimmune_disease": "Autoimmune disease"
   },
+  "classes": [
+    "dengue",
+    "chikungunya",
+    "other_febrile"
+  ],
+  "class_labels": {
+    "dengue": "Dengue",
+    "chikungunya": "Chikungunya",
+    "other_febrile": "Other febrile illness"
+  },
+  "dengue_threshold": 0.34,
+  "target_dengue_recall": 0.8,
   "cv_metrics": [
     {
       "model": "Logistic Regression",
-      "accuracy": 0.5861,
-      "accuracy_std": 0.0081,
-      "precision": 0.7621,
-      "precision_std": 0.0063,
-      "recall": 0.5723,
-      "recall_std": 0.0165,
-      "f1": 0.6535,
-      "f1_std": 0.0107,
-      "roc_auc": 0.6334,
-      "roc_auc_std": 0.0087
+      "accuracy": 0.5346,
+      "accuracy_std": 0.0022,
+      "balanced_accuracy": 0.5346,
+      "balanced_accuracy_std": 0.0022,
+      "f1_macro": 0.526,
+      "f1_macro_std": 0.002,
+      "roc_auc": 0.704,
+      "roc_auc_std": 0.0011,
+      "log_loss": 0.9674,
+      "log_loss_std": 0.0014
     },
     {
       "model": "Random Forest",
-      "accuracy": 0.59,
-      "accuracy_std": 0.009,
-      "precision": 0.7652,
-      "precision_std": 0.0078,
-      "recall": 0.5763,
-      "recall_std": 0.0179,
-      "f1": 0.6573,
-      "f1_std": 0.0114,
-      "roc_auc": 0.6384,
-      "roc_auc_std": 0.0092
+      "accuracy": 0.6721,
+      "accuracy_std": 0.005,
+      "balanced_accuracy": 0.6721,
+      "balanced_accuracy_std": 0.005,
+      "f1_macro": 0.6688,
+      "f1_macro_std": 0.005,
+      "roc_auc": 0.8387,
+      "roc_auc_std": 0.0018,
+      "log_loss": 0.7806,
+      "log_loss_std": 0.0025
     },
     {
-      "model": "Gradient Boosting",
-      "accuracy": 0.5882,
-      "accuracy_std": 0.0065,
-      "precision": 0.7738,
-      "precision_std": 0.01,
-      "recall": 0.5609,
-      "recall_std": 0.016,
-      "f1": 0.6502,
-      "f1_std": 0.009,
-      "roc_auc": 0.6436,
-      "roc_auc_std": 0.0096
+      "model": "XGBoost",
+      "accuracy": 0.6917,
+      "accuracy_std": 0.0023,
+      "balanced_accuracy": 0.6917,
+      "balanced_accuracy_std": 0.0023,
+      "f1_macro": 0.6899,
+      "f1_macro_std": 0.0023,
+      "roc_auc": 0.857,
+      "roc_auc_std": 0.0011,
+      "log_loss": 0.7114,
+      "log_loss_std": 0.0026
+    },
+    {
+      "model": "LightGBM",
+      "accuracy": 0.6953,
+      "accuracy_std": 0.0022,
+      "balanced_accuracy": 0.6953,
+      "balanced_accuracy_std": 0.0022,
+      "f1_macro": 0.6936,
+      "f1_macro_std": 0.0023,
+      "roc_auc": 0.8597,
+      "roc_auc_std": 0.0009,
+      "log_loss": 0.7044,
+      "log_loss_std": 0.0023
     }
   ],
   "test_metrics": {
-    "accuracy": 0.658,
-    "precision": 0.7242,
-    "recall": 0.8057,
-    "f1": 0.7628,
-    "roc_auc": 0.6345,
-    "specificity": 0.3404,
+    "accuracy": 0.6883,
+    "balanced_accuracy": 0.6883,
+    "f1_macro": 0.6838,
+    "roc_auc": 0.8578,
+    "log_loss": 0.7089,
+    "per_class": [
+      {
+        "class": "dengue",
+        "label": "Dengue",
+        "precision": 0.7072042300066094,
+        "recall": 0.8025,
+        "f1": 0.7518444782761448,
+        "support": 8000,
+        "roc_auc": 0.8983024257812501
+      },
+      {
+        "class": "chikungunya",
+        "label": "Chikungunya",
+        "precision": 0.6769194646630664,
+        "recall": 0.72075,
+        "f1": 0.6981474754812932,
+        "support": 8000,
+        "roc_auc": 0.865613796875
+      },
+      {
+        "class": "other_febrile",
+        "label": "Other febrile illness",
+        "precision": 0.6764522173641474,
+        "recall": 0.5415,
+        "f1": 0.601499583449042,
+        "support": 8000,
+        "roc_auc": 0.80956398828125
+      }
+    ],
     "confusion_matrix": [
       [
-        418,
-        810
+        6420,
+        777,
+        803
       ],
       [
-        513,
-        2127
+        965,
+        5766,
+        1269
+      ],
+      [
+        1693,
+        1975,
+        4332
       ]
     ]
   },
-  "test_metrics_threshold_05": {
-    "accuracy": 0.5776,
-    "precision": 0.7628,
-    "recall": 0.553,
-    "f1": 0.6412,
-    "roc_auc": 0.6345,
-    "specificity": 0.6303,
+  "test_metrics_argmax": {
+    "accuracy": 0.6934,
+    "balanced_accuracy": 0.6934,
+    "f1_macro": 0.6915,
+    "roc_auc": 0.8578,
+    "log_loss": 0.7089,
+    "per_class": [
+      {
+        "class": "dengue",
+        "label": "Dengue",
+        "precision": 0.7478400394964206,
+        "recall": 0.757375,
+        "f1": 0.7525773195876289,
+        "support": 8000,
+        "roc_auc": 0.8983024257812501
+      },
+      {
+        "class": "chikungunya",
+        "label": "Chikungunya",
+        "precision": 0.6653221288515406,
+        "recall": 0.74225,
+        "f1": 0.7016838995568685,
+        "support": 8000,
+        "roc_auc": 0.865613796875
+      },
+      {
+        "class": "other_febrile",
+        "label": "Other febrile illness",
+        "precision": 0.6659974186146566,
+        "recall": 0.5805,
+        "f1": 0.6203165698256863,
+        "support": 8000,
+        "roc_auc": 0.80956398828125
+      }
+    ],
     "confusion_matrix": [
       [
-        774,
-        454
+        6059,
+        937,
+        1004
       ],
       [
-        1180,
-        1460
+        737,
+        5938,
+        1325
+      ],
+      [
+        1306,
+        2050,
+        4644
       ]
     ]
   },
-  "importance": [
+  "shap_importance": [
     {
-      "feature": "age_group",
-      "label": "Age group",
-      "importance": 0.0535,
-      "std": 0.0063
-    },
-    {
-      "feature": "rash",
-      "label": "Skin rash or spots",
-      "importance": 0.0483,
-      "std": 0.0076
-    },
-    {
-      "feature": "abdominal_pain",
-      "label": "Abdominal pain",
-      "importance": 0.0317,
-      "std": 0.0055
-    },
-    {
-      "feature": "headache",
-      "label": "Headache",
-      "importance": 0.0138,
-      "std": 0.0039
-    },
-    {
-      "feature": "retro_orbital_pain",
-      "label": "Pain behind the eyes",
-      "importance": 0.008,
-      "std": 0.002
-    },
-    {
-      "feature": "vomiting",
-      "label": "Vomiting",
-      "importance": 0.0057,
-      "std": 0.0024
-    },
-    {
-      "feature": "diarrhea",
-      "label": "Diarrhea",
-      "importance": 0.0054,
-      "std": 0.0022
-    },
-    {
-      "feature": "mucosal_bleeding",
-      "label": "Bleeding gums or nose",
-      "importance": 0.0024,
-      "std": 0.0005
-    },
-    {
-      "feature": "sex",
-      "label": "Sex",
-      "importance": 0.0019,
-      "std": 0.0029
+      "feature": "state",
+      "label": "State of residence",
+      "dengue": 0.8174,
+      "chikungunya": 0.8763,
+      "other_febrile": 0.5008,
+      "total": 2.1945
     },
     {
       "feature": "arthralgia",
       "label": "Joint pain",
-      "importance": 0.0011,
-      "std": 0.0014
+      "dengue": 0.5318,
+      "chikungunya": 0.2519,
+      "other_febrile": 0.0586,
+      "total": 0.8423
     },
     {
-      "feature": "drowsiness",
-      "label": "Drowsiness or fatigue",
-      "importance": 0.0005,
-      "std": 0.0011
+      "feature": "days_since_onset",
+      "label": "Days since symptom onset",
+      "dengue": 0.1776,
+      "chikungunya": 0.1921,
+      "other_febrile": 0.0932,
+      "total": 0.4629
+    },
+    {
+      "feature": "age",
+      "label": "Age",
+      "dengue": 0.0455,
+      "chikungunya": 0.1538,
+      "other_febrile": 0.1164,
+      "total": 0.3157
+    },
+    {
+      "feature": "month",
+      "label": "Month of consultation",
+      "dengue": 0.103,
+      "chikungunya": 0.0817,
+      "other_febrile": 0.1162,
+      "total": 0.3009
+    },
+    {
+      "feature": "arthritis",
+      "label": "Joint swelling (arthritis)",
+      "dengue": 0.1994,
+      "chikungunya": 0.0476,
+      "other_febrile": 0.0127,
+      "total": 0.2597
+    },
+    {
+      "feature": "retro_orbital_pain",
+      "label": "Pain behind the eyes",
+      "dengue": 0.1048,
+      "chikungunya": 0.0921,
+      "other_febrile": 0.0129,
+      "total": 0.2097
+    },
+    {
+      "feature": "headache",
+      "label": "Headache",
+      "dengue": 0.0641,
+      "chikungunya": 0.1005,
+      "other_febrile": 0.0143,
+      "total": 0.1789
+    },
+    {
+      "feature": "nausea",
+      "label": "Nausea",
+      "dengue": 0.0674,
+      "chikungunya": 0.0787,
+      "other_febrile": 0.0123,
+      "total": 0.1584
+    },
+    {
+      "feature": "back_pain",
+      "label": "Back pain",
+      "dengue": 0.0609,
+      "chikungunya": 0.0141,
+      "other_febrile": 0.0736,
+      "total": 0.1486
+    },
+    {
+      "feature": "fever",
+      "label": "Fever",
+      "dengue": 0.0251,
+      "chikungunya": 0.0331,
+      "other_febrile": 0.0726,
+      "total": 0.1309
+    },
+    {
+      "feature": "rash",
+      "label": "Skin rash",
+      "dengue": 0.014,
+      "chikungunya": 0.0825,
+      "other_febrile": 0.0271,
+      "total": 0.1236
+    },
+    {
+      "feature": "sex_female",
+      "label": "Female sex",
+      "dengue": 0.0593,
+      "chikungunya": 0.0472,
+      "other_febrile": 0.007,
+      "total": 0.1135
+    },
+    {
+      "feature": "vomiting",
+      "label": "Vomiting",
+      "dengue": 0.0185,
+      "chikungunya": 0.032,
+      "other_febrile": 0.0195,
+      "total": 0.07
     },
     {
       "feature": "myalgia",
       "label": "Muscle pain",
-      "importance": 0.0005,
-      "std": 0.0015
-    }
-  ],
-  "temporal_validation": [
-    {
-      "scenario": "Train 2024, evaluate 2023",
-      "n_train": 15177,
-      "n_test": 3023,
-      "test_prevalence": 0.6626,
-      "roc_auc": 0.6264
+      "dengue": 0.0141,
+      "chikungunya": 0.0266,
+      "other_febrile": 0.0211,
+      "total": 0.0618
     },
     {
-      "scenario": "Train 2023-2024, evaluate 2025-2026",
-      "n_train": 18200,
-      "n_test": 1140,
-      "test_prevalence": 0.2053,
-      "roc_auc": 0.5062
+      "feature": "leukopenia",
+      "label": "Leukopenia (low white blood cells)",
+      "dengue": 0.0419,
+      "chikungunya": 0.0072,
+      "other_febrile": 0.0067,
+      "total": 0.0557
+    },
+    {
+      "feature": "petechiae",
+      "label": "Petechiae (small red skin spots)",
+      "dengue": 0.0079,
+      "chikungunya": 0.0328,
+      "other_febrile": 0.0125,
+      "total": 0.0532
+    },
+    {
+      "feature": "hypertension",
+      "label": "Hypertension",
+      "dengue": 0.0034,
+      "chikungunya": 0.0125,
+      "other_febrile": 0.0103,
+      "total": 0.0261
+    },
+    {
+      "feature": "conjunctivitis",
+      "label": "Red eyes (conjunctivitis)",
+      "dengue": 0.0106,
+      "chikungunya": 0.0014,
+      "other_febrile": 0.005,
+      "total": 0.017
+    },
+    {
+      "feature": "tourniquet_test",
+      "label": "Positive tourniquet test",
+      "dengue": 0.0085,
+      "chikungunya": 0.0025,
+      "other_febrile": 0.0031,
+      "total": 0.0142
+    },
+    {
+      "feature": "diabetes",
+      "label": "Diabetes",
+      "dengue": 0.0063,
+      "chikungunya": 0.0029,
+      "other_febrile": 0.0037,
+      "total": 0.0129
+    },
+    {
+      "feature": "autoimmune_disease",
+      "label": "Autoimmune disease",
+      "dengue": 0.002,
+      "chikungunya": 0.0006,
+      "other_febrile": 0.0029,
+      "total": 0.0055
+    },
+    {
+      "feature": "kidney_disease",
+      "label": "Chronic kidney disease",
+      "dengue": 0.0006,
+      "chikungunya": 0.0008,
+      "other_febrile": 0.0032,
+      "total": 0.0046
+    },
+    {
+      "feature": "liver_disease",
+      "label": "Liver disease",
+      "dengue": 0.0013,
+      "chikungunya": 0.0004,
+      "other_febrile": 0.0009,
+      "total": 0.0026
+    },
+    {
+      "feature": "hematologic_disease",
+      "label": "Blood disorder",
+      "dengue": 0.001,
+      "chikungunya": 0.0006,
+      "other_febrile": 0.0004,
+      "total": 0.002
+    },
+    {
+      "feature": "peptic_ulcer",
+      "label": "Peptic ulcer",
+      "dengue": 0.0005,
+      "chikungunya": 0.0005,
+      "other_febrile": 0.0002,
+      "total": 0.0011
     }
   ],
-  "data": {
-    "n_total": 19340,
-    "dengue_prevalence": 0.6825,
-    "n_train": 15472,
-    "n_test": 3868,
-    "source": "SIVIGILA Tuluá - datos.gov.co (dq2k-gub9)"
+  "temporal_validation": {
+    "scenario": "Train 2023, evaluate 2025",
+    "n_test": 45000,
+    "accuracy": 0.5425,
+    "balanced_accuracy": 0.5425,
+    "f1_macro": 0.5076,
+    "roc_auc": 0.7601,
+    "per_class": [
+      {
+        "class": "dengue",
+        "label": "Dengue",
+        "precision": 0.496236579681351,
+        "recall": 0.8658666666666667,
+        "f1": 0.6308988900493041,
+        "support": 15000,
+        "roc_auc": 0.8096189177777777
+      },
+      {
+        "class": "chikungunya",
+        "label": "Chikungunya",
+        "precision": 0.5832414553472988,
+        "recall": 0.2116,
+        "f1": 0.3105371294393895,
+        "support": 15000,
+        "roc_auc": 0.7078348200000001
+      },
+      {
+        "class": "other_febrile",
+        "label": "Other febrile illness",
+        "precision": 0.616361598804632,
+        "recall": 0.55,
+        "f1": 0.5812929364100757,
+        "support": 15000,
+        "roc_auc": 0.7629149533333333
+      }
+    ]
   },
-  "target_recall": 0.8,
-  "sklearn_version": "1.9.1",
-  "trained_at": "2026-11-06T15:14:12"
+  "external_validation": {
+    "source": "SIVIGILA Tuluá, Colombia - datos.gov.co (dq2k-gub9)",
+    "n": 19340,
+    "dengue_share": 0.6825,
+    "roc_auc_dengue": 0.5625,
+    "dengue_recall": 0.452,
+    "specificity": 0.6148
+  },
+  "data": {
+    "n_total": 120000,
+    "n_train": 96000,
+    "n_test": 24000,
+    "year": 2023,
+    "validation_year": 2025,
+    "class_counts": {
+      "dengue": 40000,
+      "chikungunya": 40000,
+      "other_febrile": 40000
+    },
+    "source": "SINAN (Brazil, DATASUS) - DENGBR and CHIKBR final files, lab-confirmed cases"
+  },
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0"
+  },
+  "trained_at": "2026-11-11T21:57:03"
 }

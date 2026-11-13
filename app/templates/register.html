@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Register patient{% endblock %}
+{% block title %}New consultation{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-9">
-    <h1 class="h2 mb-1">Register patient</h1>
-    <p class="text-muted mb-4">Enter the information and select the symptoms the patient <strong>with fever</strong> is experiencing.
-      The model estimates the probability that the febrile illness is dengue.</p>
+  <div class="col-lg-10">
+    <h1 class="h2 mb-1">New consultation</h1>
+    <p class="text-muted mb-4">Register a <strong>febrile patient</strong> and their findings. The model estimates how likely
+      the illness is <strong>dengue</strong>, <strong>chikungunya</strong> or <strong>another febrile illness</strong>, and explains
+      which findings weighed most in its suggestion.</p>
 
     {% if errors %}
       <div class="alert alert-danger" role="alert">Please review the fields marked in red.</div>
@@ -27,13 +28,19 @@
                    value="{{ values.document }}" required pattern="[0-9A-Za-z]{5,15}" maxlength="15" inputmode="numeric">
             <div class="invalid-feedback">{{ errors.document }}</div>
           </div>
-          <div class="col-6 col-md-4">
+          <div class="col-6 col-md-3">
             <label for="age" class="form-label">Age (years)</label>
             <input type="number" class="form-control {{ 'is-invalid' if errors.age }}" id="age" name="age"
-                   value="{{ values.age }}" required min="0" max="120" step="1">
+                   value="{{ values.age }}" required min="0" max="110" step="1">
             <div class="invalid-feedback">{{ errors.age }}</div>
           </div>
-          <div class="col-6 col-md-5">
+          <div class="col-6 col-md-4">
+            <label for="days_since_onset" class="form-label">Days since symptoms started</label>
+            <input type="number" class="form-control {{ 'is-invalid' if errors.days_since_onset }}" id="days_since_onset"
+                   name="days_since_onset" value="{{ values.days_since_onset }}" required min="0" max="30" step="1">
+            <div class="invalid-feedback">{{ errors.days_since_onset }}</div>
+          </div>
+          <div class="col-md-5">
             <span class="form-label d-block">Sex</span>
             <div class="btn-group segmented w-100" role="group" aria-label="Sex">
               {% for value, text in [("F", "Female"), ("M", "Male")] %}
@@ -47,10 +54,39 @@
         </div>
 
         <hr class="my-4">
-        <h2 class="h5 mb-1 d-flex align-items-center"><span class="step-badge">2</span> Symptoms</h2>
-        <p class="text-muted small ms-4 ps-3">Select all that apply. It is assumed that the patient has a fever.</p>
-        <div class="row row-cols-1 row-cols-sm-2 g-2">
-          {% for key, label in SYMPTOM_LABELS.items() %}
+        <h2 class="h5 mb-1 d-flex align-items-center"><span class="step-badge">2</span> Epidemiological context</h2>
+        <p class="text-muted small ms-4 ps-3">Where the patient lives and when they consult. Local circulation changes how likely each
+          virus is: the same symptoms point to chikungunya where it circulates and to dengue elsewhere.</p>
+        <div class="row g-3">
+          <div class="col-md-7">
+            <label for="state" class="form-label">State of residence (Brazil)</label>
+            <select class="form-select {{ 'is-invalid' if errors.state }}" id="state" name="state" required>
+              <option value="" disabled {{ 'selected' if not values.state }}>Select a state…</option>
+              {% for code, state_name in STATES|dictsort(by='value') %}
+                <option value="{{ code }}" {{ 'selected' if values.state == code }}>{{ state_name }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">{{ errors.state }}</div>
+          </div>
+          <div class="col-md-5">
+            <label for="month" class="form-label">Month of the consultation</label>
+            {% set chosen_month = (values.month or CURRENT_MONTH)|int %}
+            <select class="form-select {{ 'is-invalid' if errors.month }}" id="month" name="month" required>
+              {% for m in MONTHS %}<option value="{{ loop.index }}" {{ 'selected' if chosen_month == loop.index }}>{{ m }}</option>{% endfor %}
+            </select>
+            <div class="invalid-feedback">{{ errors.month }}</div>
+          </div>
+        </div>
+
+        {% set hints = {"Symptoms": "Select every symptom the patient reports.",
+                        "Clinical and laboratory findings": "From the physical exam and a basic blood count. Leave unticked if not done.",
+                        "Comorbidities": "Known chronic conditions."} %}
+        {% for group, items in BINARY_GROUPS.items() %}
+        <hr class="my-4">
+        <h2 class="h5 mb-1 d-flex align-items-center"><span class="step-badge">{{ loop.index + 2 }}</span> {{ group }}</h2>
+        <p class="text-muted small ms-4 ps-3">{{ hints[group] }}</p>
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-2">
+          {% for key, (column, label) in items.items() %}
             <div class="col">
               <label class="symptom-chip form-check border p-2 ps-5 h-100">
                 <input class="form-check-input" type="checkbox" name="{{ key }}" value="1"
@@ -60,9 +96,10 @@
             </div>
           {% endfor %}
         </div>
+        {% endfor %}
       </div>
       <div class="card-footer bg-white p-3 text-end">
-        <button type="submit" class="btn btn-brand btn-lg px-4">Calculate probability</button>
+        <button type="submit" class="btn btn-brand btn-lg px-4">Get differential diagnosis</button>
       </div>
     </form>
   </div>

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Patients{% endblock %}
+{% block title %}Consultations{% endblock %}
 {% block content %}
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-  <h1 class="h2 mb-0">Registered patients <span class="badge text-bg-light border align-middle fs-6">{{ patients|length }}</span></h1>
-  <div class="btn-group filter-group" role="group" aria-label="Filter by result">
-    {% for key, text in [("all", "All"), ("probable", "Probable dengue"), ("unlikely", "Unlikely")] %}
+  <h1 class="h2 mb-0">Consultations <span class="badge text-bg-light border align-middle fs-6">{{ patients|length }}</span></h1>
+  <div class="btn-group filter-group flex-wrap" role="group" aria-label="Filter by suggested diagnosis">
+    {% for key in ["all"] + CLASSES %}
       <a href="{{ url_for('patients', result=key) }}"
-         class="btn btn-sm {{ 'active-filter' if current_filter == key else 'btn-outline-secondary' }}">{{ text }}</a>
+         class="btn btn-sm {{ 'active-filter' if current_filter == key else 'btn-outline-secondary' }}">{{ CLASS_LABELS.get(key, "All") }}</a>
     {% endfor %}
   </div>
 </div>
@@ -17,7 +17,8 @@
     <thead>
       <tr>
         <th>Date</th><th>Patient</th><th>Document</th><th class="text-center">Age</th><th class="text-center">Sex</th>
-        <th class="text-center">Symptoms</th><th class="text-end">Probability</th><th>Result</th><th></th>
+        <th class="text-center">Day</th><th>Suggested diagnosis</th>
+        {% for c in CLASSES %}<th class="text-end">{{ CLASS_LABELS[c] }}</th>{% endfor %}<th></th>
       </tr>
     </thead>
     <tbody>
@@ -33,9 +34,12 @@
         <td>{{ p.document }}</td>
         <td class="text-center">{{ p.age }}</td>
         <td class="text-center">{{ p.sex }}</td>
-        <td class="text-center">{{ p.symptoms(SYMPTOM_LABELS)|length }}</td>
-        <td class="text-end fw-semibold">{{ '%.1f' % (p.probability * 100) }} %</td>
-        <td><span class="badge badge-soft {{ 'is-probable' if p.result == PROBABLE else 'is-unlikely' }}">{{ p.result }}</span></td>
+        <td class="text-center">{{ p.days_since_onset }}</td>
+        <td><span class="badge badge-soft dx-badge dx-{{ p.prediction }}">{{ CLASS_LABELS[p.prediction] }}</span>
+            {% if p.dengue_alert %}<span class="small text-brand fw-semibold ms-1" title="Dengue alert">!</span>{% endif %}</td>
+        {% for c in CLASSES %}
+          <td class="text-end {{ 'fw-semibold' if c == p.prediction else 'text-muted' }}">{{ '%.0f' % (p.probabilities[c] * 100) }}%</td>
+        {% endfor %}
         <td class="text-end"><a href="{{ url_for('result', patient_id=p.id) }}" class="btn btn-sm btn-outline-secondary">View</a></td>
       </tr>
       {% endfor %}
@@ -45,8 +49,8 @@
 {% else %}
   <div class="card text-center py-5">
     <div class="card-body">
-      <p class="text-muted mb-3">No patients {{ 'with this result' if current_filter != 'all' else 'registered yet' }}.</p>
-      <a href="{{ url_for('register') }}" class="btn btn-brand">Register a patient</a>
+      <p class="text-muted mb-3">No consultations {{ 'with this diagnosis' if current_filter != 'all' else 'registered yet' }}.</p>
+      <a href="{{ url_for('register') }}" class="btn btn-brand">New consultation</a>
     </div>
   </div>
 {% endif %}

@@ -1,0 +1,138 @@
+{
+  "year": 2023,
+  "files": [
+    {
+      "source": "DENGBR23",
+      "records": 1645956,
+      "classification_by_criterion": {
+        "0": {
+          "0": 2166,
+          "1": 26,
+          "2": 14,
+          "3": 5906,
+          "blank": 0
+        },
+        "10": {
+          "0": 733,
+          "1": 638301,
+          "2": 754849,
+          "3": 7536,
+          "blank": 0
+        },
+        "11": {
+          "0": 17,
+          "1": 14451,
+          "2": 8624,
+          "3": 576,
+          "blank": 0
+        },
+        "12": {
+          "0": 2,
+          "1": 1293,
+          "2": 335,
+          "3": 56,
+          "blank": 0
+        },
+        "8": {
+          "0": 0,
+          "1": 1032,
+          "2": 2304,
+          "3": 8015,
+          "blank": 196336
+        },
+        "blank": {
+          "0": 0,
+          "1": 4,
+          "2": 5,
+          "3": 227,
+          "blank": 3148
+        }
+      }
+    },
+    {
+      "source": "CHIKBR23",
+      "records": 266442,
+      "classification_by_criterion": {
+        "0": {
+          "0": 275,
+          "1": 2,
+          "2": 3,
+          "3": 105,
+          "blank": 0
+        },
+        "13": {
+          "0": 4,
+          "1": 56197,
+          "2": 72411,
+          "3": 1584,
+          "blank": 0
+        },
+        "5": {
+          "0": 29,
+          "1": 58353,
+          "2": 49577,
+          "3": 85,
+          "blank": 0
+        },
+        "blank": {
+          "0": 0,
+          "1": 32,
+          "2": 57,
+          "3": 1969,
+          "blank": 25759
+        }
+      }
+    }
+  ],
+  "lab_confirmed": {
+    "dengue": 654045,
+    "chikungunya": 56197,
+    "other_febrile": 58353
+  },
+  "dropped_incomplete": 1126,
+  "sample": {
+    "dengue": 40000,
+    "chikungunya": 40000,
+    "other_febrile": 40000
+  },
+  "zika_columns": [
+    "TP_NOT",
+    "ID_AGRAVO",
+    "DT_NOTIFIC",
+    "SEM_NOT",
+    "NU_ANO",
+    "SG_UF_NOT",
+    "ID_MUNICIP",
+    "ID_REGIONA",
+    "ID_UNIDADE",
+    "DT_SIN_PRI",
+    "SEM_PRI",
+    "ANO_NASC",
+    "NU_IDADE_N",
+    "CS_SEXO",
+    "CS_GESTANT",
+    "CS_RACA",
+    "CS_ESCOL_N",
+    "SG_UF",
+    "ID_MN_RESI",
+    "ID_RG_RESI",
+    "ID_PAIS",
+    "NDUPLIC_N",
+    "IN_VINCULA",
+    "DT_INVEST",
+    "ID_OCUPA_N",
+    "CLASSI_FIN",
+    "CRITERIO",
+    "TPAUTOCTO",
+    "COUFINF",
+    "COPAISINF",
+    "COMUNINF",
+    "DOENCA_TRA",
+    "EVOLUCAO",
+    "DT_OBITO",
+    "DT_ENCERRA",
+    "DT_DIGITA",
+    "TP_SISTEMA",
+    "TPUNINOT"
+  ]
+}

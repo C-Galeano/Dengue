@@ -1,0 +1,23 @@
+{% from "_icons.html" import icon %}
+{# Helpers for the CRISP-DM phase pages. #}
+
+{# One file of the repository, linked to GitHub. #}
+{% macro file_item(path, description) -%}
+<li>{{ icon("file") }}<a href="https://github.com/C-Galeano/Dengue/blob/main/{{ path }}" target="_blank" rel="noopener">{{ path }}</a><span>{{ description }}</span></li>
+{%- endmacro %}
+
+{# A generic CRISP-DM task with its description. #}
+{% macro task(name, description) -%}
+<li><strong>{{ name }}</strong> — {{ description }}</li>
+{%- endmacro %}
+
+{# A small metric tile. #}
+{% macro metric(label, value, note="") -%}
+<div class="col-6 col-md-3">
+  <div class="mini-stat h-100">
+    <div class="label">{{ label }}</div>
+    <div class="value">{{ value }}</div>
+    {% if note %}<div class="note">{{ note }}</div>{% endif %}
+  </div>
+</div>
+{%- endmacro %}

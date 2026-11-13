@@ -7,10 +7,10 @@ from flask import abort, current_app, redirect, render_template, request, url_fo
 
 from src.app_factory import create_app
 from src.database import Patient, db
+from src.methodology import PHASES, code_excerpts, get_phase
 from src.forecast import (TEST_WEEKS_DEFAULT, baseline_forecast, demo_series,
                           project_document, read_series)
-from src.prediction import PROBABLE, UNLIKELY
-from src.preprocessing import SYMPTOM_LABELS
+from src.preprocessing import CLASSES
 from src.validation import validate_patient
 
 app = create_app()
@@ -37,7 +37,7 @@ def home():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Patient registration and prediction form."""
+    """Consultation form: patient data and clinical findings -> differential diagnosis."""
     if request.method == "GET":
         return render_template("register.html", values={}, errors={})
 
@@ -45,9 +45,10 @@ def register():
     if errors:
         return render_template("register.html", values=request.form, errors=errors), 400
 
-    symptoms = {s: data[s] for s in SYMPTOM_LABELS}
-    proba, result = current_app.extensions["predictor"].predict(data["age"], data["sex"], symptoms)
-    patient = Patient(**data, probability=proba, result=result)
+    findings = data["findings"]
+    output = current_app.extensions["predictor"].predict(
+        data["age"], data["sex"], data["days_since_onset"], findings, findings["state"], findings["month"])
+    patient = Patient(**data, **output)
     db.session.add(patient)
     db.session.commit()
     # Post/Redirect/Get: reloading the results page does not register the patient again.
@@ -57,17 +58,17 @@ def register():
 @app.route("/result/<int:patient_id>")
 def result(patient_id):
     patient = db.session.get(Patient, patient_id) or abort(404)
-    return render_template("result.html", p=patient, threshold=current_app.extensions["predictor"].threshold)
+    return render_template("result.html", p=patient,
+                           threshold=current_app.extensions["predictor"].dengue_threshold)
 
 
 @app.route("/patients")
 def patients():
-    """Patient list filtered by result: ?result=probable | unlikely | all."""
-    filters = {"probable": PROBABLE, "unlikely": UNLIKELY}
+    """Consultation list filtered by suggested diagnosis: ?result=dengue | chikungunya | other_febrile | all."""
     current_filter = request.args.get("result", "all")
     query = db.select(Patient).order_by(Patient.registered_at.desc())
-    if current_filter in filters:
-        query = query.where(Patient.result == filters[current_filter])
+    if current_filter in CLASSES:
+        query = query.where(Patient.prediction == current_filter)
     else:
         current_filter = "all"
     return render_template("patients.html", patients=db.session.scalars(query).all(), current_filter=current_filter)
@@ -76,3 +77,17 @@ def patients():
 @app.route("/about")
 def about():
     return render_template("about.html", info=current_app.extensions["predictor"].info)
+
+
+@app.route("/methodology")
+def methodology():
+    """Overview of the six CRISP-DM phases."""
+    return render_template("methodology.html", phases=PHASES)
+
+
+@app.route("/methodology/<int:number>")
+def phase(number):
+    """One page per CRISP-DM phase: what the phase is and how this project implements it."""
+    current = get_phase(number) or abort(404)
+    return render_template(f"phases/{number}.html", phase=current, phases=PHASES,
+                           code=code_excerpts(number), info=current_app.extensions["predictor"].info)

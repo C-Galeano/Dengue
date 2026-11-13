@@ -1,62 +1,127 @@
 {% extends "base.html" %}
 {% block title %}Result{% endblock %}
 {% block content %}
-{% set probable = p.result == PROBABLE %}
-{% set pct = p.probability * 100 %}
+{% set predicted = p.prediction %}
+{% set top_pct = p.probability * 100 %}
 <div class="row justify-content-center">
-  <div class="col-lg-8">
-    <div class="card text-center">
-      <div class="card-body p-4 p-md-5">
-        <p class="text-muted mb-4">{{ p.name }} · Doc. {{ p.document }} · {{ p.age }} years · {{ 'Female' if p.sex == 'F' else 'Male' }}</p>
+  <div class="col-lg-10">
+    <p class="text-muted mb-3">{{ p.name }} · Doc. {{ p.document }} · {{ p.age }} years · {{ 'Female' if p.sex == 'F' else 'Male' }}
+      · day {{ p.days_since_onset }} of illness · {{ p.registered_at.strftime('%Y-%m-%d %H:%M') }}</p>
 
-        <div class="gauge {{ 'is-unlikely' if not probable }}" style="--pct: {{ pct|round(1) }}" role="img"
-             aria-label="Estimated probability of dengue: {{ '%.1f' % pct }} percent">
-          <div class="gauge-inner">
-            <div class="gauge-value {{ 'text-brand' if probable else 'text-secondary' }}">{{ '%.1f' % pct }}%</div>
-            <div class="gauge-caption">probability</div>
+    <div class="row g-3">
+      <div class="col-md-5">
+        <div class="card h-100 text-center">
+          <div class="card-body p-4">
+            <div class="small text-muted text-uppercase fw-bold mb-3">Suggested diagnosis</div>
+            <div class="gauge dx-{{ predicted }}" style="--pct: {{ top_pct|round(1) }}" role="img"
+                 aria-label="{{ CLASS_LABELS[predicted] }}: {{ '%.1f' % top_pct }} percent">
+              <div class="gauge-inner">
+                <div class="gauge-value">{{ '%.0f' % top_pct }}%</div>
+                <div class="gauge-caption">probability</div>
+              </div>
+            </div>
+            <div class="mt-4">
+              <span class="result-pill fs-5 dx-pill dx-{{ predicted }}"><span class="dot"></span>{{ CLASS_LABELS[predicted] }}</span>
+            </div>
+            {% if p.dengue_alert and predicted == 'dengue' and p.probabilities.dengue < p.probabilities.values()|max %}
+              <p class="small mt-3 mb-0 text-brand fw-semibold">Dengue alert: suggested as dengue because its probability is
+                above the safety threshold ({{ (threshold * 100)|round|int }}%), even though another class scored higher.</p>
+            {% endif %}
           </div>
         </div>
+      </div>
 
-        <div class="mt-4">
-          <span class="result-pill fs-5 {{ 'is-probable' if probable else 'is-unlikely' }}"><span class="dot"></span>{{ p.result }}</span>
+      <div class="col-md-7">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <h2 class="h6 text-uppercase text-muted small fw-bold mb-3">Probability of each diagnosis</h2>
+            {% for c in CLASSES %}
+              {% set pct = p.probabilities[c] * 100 %}
+              <div class="mb-3">
+                <div class="d-flex justify-content-between small mb-1">
+                  <span class="fw-semibold">{{ CLASS_LABELS[c] }}{% if c == predicted %} <span class="badge-soft dx-badge dx-{{ c }} ms-1">suggested</span>{% endif %}</span>
+                  <span class="fw-semibold">{{ '%.1f' % pct }}%</span>
+                </div>
+                <div class="progress position-relative" role="progressbar" aria-valuenow="{{ pct|round(1) }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ CLASS_LABELS[c] }}">
+                  <div class="progress-bar dx-bar dx-{{ c }}" style="width: {{ pct }}%"></div>
+                  {% if c == 'dengue' %}<div class="threshold-marker" style="left: {{ threshold * 100 }}%" title="Dengue alert threshold"></div>{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+            <p class="small text-muted mb-0">The black line on the dengue bar is the <strong>dengue alert threshold</strong>
+              ({{ (threshold * 100)|round|int }}%). Above it, dengue is suggested even if another class is higher, because missing dengue is the most dangerous error.</p>
+          </div>
         </div>
-
-        <div class="progress mt-5 position-relative" role="progressbar"
-             aria-valuenow="{{ pct|round(1) }}" aria-valuemin="0" aria-valuemax="100" aria-label="Probability">
-          <div class="progress-bar {{ 'bg-brand' if probable else 'bg-secondary' }}" style="width: {{ pct }}%"></div>
-          <div class="threshold-marker" style="left: {{ threshold * 100 }}%" title="Threshold {{ (threshold * 100)|round|int }} %"></div>
-        </div>
-        <p class="small text-muted mt-3 mb-0">The black line marks the decision threshold ({{ (threshold * 100)|round|int }} %).
-          Above this value, the result is classified as "Probable dengue".</p>
       </div>
     </div>
 
     <div class="card mt-3">
-      <div class="card-body">
-        <h2 class="h6">Reported symptoms</h2>
-        {% set reported = p.symptoms(SYMPTOM_LABELS) %}
-        {% if reported %}
-          {% for s in reported %}<span class="badge badge-soft is-probable me-1 mb-1">{{ s }}</span>{% endfor %}
-        {% else %}
-          <p class="text-muted mb-0">Fever only (no other symptoms selected).</p>
-        {% endif %}
+      <div class="card-body p-4">
+        <h2 class="h5 mb-1">Why this suggestion? <span class="section-tag ms-1 align-middle">SHAP</span></h2>
+        <p class="small text-muted">The findings that weighed most for <strong>{{ CLASS_LABELS[predicted] }}</strong> in this patient.
+          Red bars push <strong>toward</strong> {{ CLASS_LABELS[predicted] }}; grey bars push <strong>away</strong> from it.</p>
+        {% set biggest = p.explanation|map(attribute='shap')|map('abs')|max %}
+        {% for e in p.explanation %}
+          {% set width = (e.shap|abs) / biggest * 50 if biggest else 0 %}
+          <div class="shap-row small">
+            <div class="shap-label">{{ e.label }}
+              <span class="text-muted">· {% if e.value_text %}{{ e.value_text }}{% elif e.feature in ('age', 'days_since_onset') %}{{ e.value|int }}{% else %}{{ 'yes' if e.value else 'no' }}{% endif %}</span>
+            </div>
+            <div class="shap-track">
+              <div class="shap-axis"></div>
+              <div class="shap-bar {{ 'is-pos' if e.shap > 0 else 'is-neg' }}"
+                   style="{{ 'left: 50%' if e.shap > 0 else 'right: 50%' }}; width: {{ width }}%"></div>
+            </div>
+            <div class="shap-value">{{ '%+.2f' % e.shap }}</div>
+          </div>
+        {% endfor %}
+        <p class="small text-muted mt-3 mb-0">SHAP values in log-odds: how much each finding moved the model's score for this diagnosis
+          from its average. Findings marked "no" also count: the absence of a typical sign is informative.</p>
       </div>
     </div>
 
-    <div class="alert {{ 'alert-danger' if probable else 'alert-secondary' }} mt-3">
-      {% if probable %}
-        <strong>Consulting a healthcare professional is recommended</strong> and a laboratory test for dengue should be performed.
-      {% else %}
-        The model does not identify a typical dengue pattern, but <strong>this does not rule it out</strong>. If the fever continues, seek medical advice.
-      {% endif %}
-      <hr>
-      <span class="small"><strong>Seek emergency medical care immediately</strong> if any of the following occur: severe abdominal pain, persistent vomiting,
-        bleeding, dizziness or fainting, drowsiness, or marked irritability.</span>
+    <div class="row g-3 mt-0">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body p-4">
+            <h2 class="h6">Registered findings</h2>
+            {% if p.findings.get('state') %}
+              <div class="small text-muted mt-2">Epidemiological context</div>
+              <span class="badge badge-soft me-1 mb-1">{{ STATES.get(p.findings.state, p.findings.state) }}</span>
+              <span class="badge badge-soft me-1 mb-1">{{ MONTHS[p.findings.month - 1] }}</span>
+            {% endif %}
+            {% for group, items in BINARY_GROUPS.items() %}
+              {% set names = [] %}
+              {% for key, (column, label) in items.items() %}{% if p.findings.get(key) %}{% set _ = names.append(label) %}{% endif %}{% endfor %}
+              <div class="small text-muted mt-2">{{ group }}</div>
+              {% if names %}
+                {% for n in names %}<span class="badge badge-soft me-1 mb-1">{{ n }}</span>{% endfor %}
+              {% else %}<div class="small">None</div>{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100 next-steps dx-border-{{ predicted }}">
+          <div class="card-body p-4">
+            <h2 class="h6">Suggested next steps</h2>
+            <ul class="small mb-0">
+              {% for step in NEXT_STEPS[predicted] %}<li>{{ step }}</li>{% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning mt-3 small">
+      <strong>Decision support only.</strong> The final diagnosis is clinical and confirmed by laboratory tests.
+      <strong>Seek emergency care immediately</strong> if there is severe abdominal pain, persistent vomiting, bleeding,
+      dizziness or fainting, drowsiness or marked irritability.
     </div>
 
     <div class="d-flex flex-wrap gap-2 justify-content-center">
-      <a href="{{ url_for('register') }}" class="btn btn-brand">Register another patient</a>
-      <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary">View patients</a>
+      <a href="{{ url_for('register') }}" class="btn btn-brand">New consultation</a>
+      <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary">View consultations</a>
     </div>
   </div>
 </div>
