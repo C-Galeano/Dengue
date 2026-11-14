@@ -1,12 +1,19 @@
 {% extends "base.html" %}
-{% block title %}New consultation{% endblock %}
+{% block title %}{{ 'Update clinical history' if editing else 'New consultation' }}{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-10">
-    <h1 class="h2 mb-1">New consultation</h1>
-    <p class="text-muted mb-4">Register a <strong>febrile patient</strong> and their findings. The model estimates how likely
-      the illness is <strong>dengue</strong>, <strong>chikungunya</strong> or <strong>another febrile illness</strong>, and explains
-      which findings weighed most in its suggestion.</p>
+    {% if editing %}
+      <span class="chip mb-2">Editing patient #{{ patient.id }}</span>
+      <h1 class="h2 mb-1">Update clinical history</h1>
+      <p class="text-muted mb-4">Tick any <strong>new symptoms or findings</strong> and untick the ones that no longer apply.
+        When you save, the model <strong>runs again</strong> and the suggested diagnosis is updated.</p>
+    {% else %}
+      <h1 class="h2 mb-1">New consultation</h1>
+      <p class="text-muted mb-4">Register a <strong>febrile patient</strong> and their findings. The model estimates how likely
+        the illness is <strong>dengue</strong>, <strong>chikungunya</strong> or <strong>another febrile illness</strong>, and explains
+        which findings weighed most in its suggestion.</p>
+    {% endif %}
 
     {% if errors %}
       <div class="alert alert-danger" role="alert">Please review the fields marked in red.</div>
@@ -98,8 +105,13 @@
         </div>
         {% endfor %}
       </div>
-      <div class="card-footer bg-white p-3 text-end">
-        <button type="submit" class="btn btn-brand btn-lg px-4">Get differential diagnosis</button>
+      <div class="card-footer bg-white p-3 d-flex justify-content-end gap-2">
+        {% if editing %}
+          <a href="{{ url_for('result', patient_id=patient.id) }}" class="btn btn-outline-secondary btn-lg px-4">Cancel</a>
+          <button type="submit" class="btn btn-brand btn-lg px-4">Save and update diagnosis</button>
+        {% else %}
+          <button type="submit" class="btn btn-brand btn-lg px-4">Get differential diagnosis</button>
+        {% endif %}
       </div>
     </form>
   </div>

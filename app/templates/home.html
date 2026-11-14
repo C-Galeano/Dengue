@@ -1,13 +1,20 @@
 {% extends "base.html" %}
 {% from "_icons.html" import icon %}
-{% block title %}Dengue forecasting{% endblock %}
+{% block title %}Home{% endblock %}
 {% block content %}
+{% set t = info.test_metrics %}
+{% set tv = info.temporal_validation %}
+{% set ev = info.external_validation %}
+{% set threshold_pct = (info.dengue_threshold * 100)|round|int %}
+{% set dengue_recall = t.per_class[0].recall %}
 
 <section class="hero mb-4">
   <span class="chip mb-3">Machine Learning final project · Smart hospital</span>
   <h1 class="mb-3">Arbovirus Differential Diagnosis with Explainable AI</h1>
-  <p class="mb-4">For a febrile patient at the first consultation: how likely is it dengue, chikungunya or another febrile
-    illness, and which findings weighed most in that suggestion. Trained on laboratory-confirmed surveillance cases.</p>
+  <p class="mb-4">For a febrile patient at the first consultation: how likely is it <strong>dengue</strong>,
+    <strong>chikungunya</strong> or <strong>another febrile illness</strong>, and which findings weighed most in that
+    suggestion. Trained on {{ "{:,}".format(info.data.n_total) }} laboratory-confirmed cases from Brazil's SINAN
+    surveillance system ({{ info.data.year }}).</p>
   <div class="d-flex flex-wrap gap-2">
     <a href="{{ url_for('register') }}" class="btn btn-light btn-lg px-4">New consultation</a>
     <a href="{{ url_for('about') }}" class="btn btn-outline-light btn-lg px-4">How the model works</a>
@@ -16,9 +23,25 @@
 </section>
 
 <div class="row g-3 mb-4">
+  {% for label, value, note in [
+      ("Model", info.model_name, "Best of the compared models"),
+      ("Macro ROC-AUC (test)", "%.2f" % t.roc_auc, "On " ~ "{:,}".format(info.data.n_test) ~ " unseen cases"),
+      ("Balanced accuracy", "%.0f%%" % (t.balanced_accuracy * 100), "Average recall across 3 diagnoses"),
+      ("Dengue recall", "%.0f%%" % (dengue_recall * 100), "Dengue cases correctly caught")] %}
+  <div class="col-6 col-lg-3">
+    <div class="card stat h-100">
+      <div class="label">{{ label }}</div>
+      <div class="value">{{ value }}</div>
+      <div class="small text-muted mt-1">{{ note }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
   {% for endpoint, title, text, icon_name in [
       ("register", "New consultation", "Symptoms, findings and comorbidities → probability of each arbovirus, with a SHAP explanation.", "clipboard"),
-      ("patients", "Consultations", "Browse and filter every consultation by suggested diagnosis.", "users"),
+      ("patients", "Consultations", "Browse, filter and update every patient's clinical history.", "users"),
       ("about", "About the model", "Metrics per disease, SHAP importance, temporal and Colombian validation.", "chart")] %}
   <div class="col-md-4">
     <a href="{{ url_for(endpoint) }}" class="card card-hover">
@@ -45,12 +68,119 @@
   </li>
 </ul>
 
-<div class="tab-content card p-3 p-md-4">
-  <div class="tab-pane fade {{ 'show active' if not forecast_tab }} doc" id="tab-project" role="tabpanel">
-    {{ document|safe }}
+<div class="tab-content">
+
+  <!-- ================= PROJECT STRUCTURE ================= -->
+  <div class="tab-pane fade {{ 'show active' if not forecast_tab }}" id="tab-project" role="tabpanel">
+
+    <!-- 1. Title -->
+    <section class="proj-section">
+      <div class="proj-head"><span class="step-badge">1</span> Project title</div>
+      <div class="proj-body">
+        <p class="fw-semibold mb-0">Arbovirus Differential Diagnosis with Explainable Artificial Intelligence: a clinical decision-support
+          tool to distinguish dengue, chikungunya and other febrile illnesses at the first consultation.</p>
+      </div>
+    </section>
+
+    <!-- 2. Problem + justification -->
+    <section class="proj-section">
+      <div class="proj-head"><span class="step-badge">2</span> Problem statement and justification</div>
+      <div class="proj-body">
+        <p><strong>Problem.</strong> Dengue and chikungunya are transmitted by the same mosquitoes and share most of their symptoms
+          (fever, headache, muscle and joint pain, rash). At the first consultation there are no laboratory results yet, so the clinician
+          has to decide with symptoms and context alone. Confirmation (NS1, RT-PCR, serology) takes time, and
+          <strong>missing a dengue case is the most dangerous error</strong> because of the risk of severe disease.</p>
+        <p class="mb-0"><strong>Justification.</strong> A model that estimates the probability of each diagnosis, and shows
+          <em>which findings drove it</em>, can support early triage while the laboratory result arrives. We trained it on
+          {{ "{:,}".format(info.data.n_total) }} laboratory-confirmed cases from SINAN (Brazil, {{ info.data.year }}), using
+          {{ info.features|length }} inputs available at the bedside. Explainability (SHAP) keeps the suggestion transparent, and the
+          decision threshold (P(dengue) ≥ {{ threshold_pct }}%) was set to catch at least
+          {{ (info.target_dengue_recall * 100)|int }}% of dengue cases.</p>
+      </div>
+    </section>
+
+    <!-- 3. Objectives -->
+    <section class="proj-section">
+      <div class="proj-head"><span class="step-badge">3</span> Project objectives</div>
+      <div class="proj-body">
+        <h3 class="proj-sub">General objective</h3>
+        <p>Develop and validate an explainable machine learning model that supports the differential diagnosis of dengue,
+          chikungunya and other febrile illnesses in a febrile patient at the first consultation.</p>
+        <h3 class="proj-sub">Specific objectives</h3>
+        <ol class="mb-0">
+          <li>Prepare a clean dataset from the SINAN surveillance files (Brazil), defining three classes: dengue, chikungunya and other febrile illness.</li>
+          <li>Compare a linear baseline (Logistic Regression) with tree-based models using 5-fold stratified cross-validation, and select the best by macro ROC-AUC (selected: <strong>{{ info.model_name }}</strong>).</li>
+          <li>Set a decision threshold that reaches the target dengue recall ({{ (info.target_dengue_recall * 100)|int }}%).</li>
+          <li>Explain every prediction with SHAP values so clinicians can see which findings weighed most.</li>
+          <li>Validate the model over time and externally on Colombian data (SIVIGILA Tuluá), and report its limitations.</li>
+          <li>Deliver a web application to register consultations, update each patient's clinical history and re-run the diagnosis.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 4. Framework -->
+    <section class="proj-section">
+      <div class="proj-head"><span class="step-badge">4</span> Reference framework <span class="opt">(optional)</span></div>
+      <div class="proj-body">
+        <ul class="mb-0">
+          <li><strong>Clinical:</strong> dengue and chikungunya are arboviruses with overlapping symptoms; diagnosis is confirmed in the laboratory.</li>
+          <li><strong>Epidemiological:</strong> local circulation (state and month) changes the pre-test probability of each disease.</li>
+          <li><strong>Technical:</strong> gradient-boosted trees (XGBoost, LightGBM), Logistic Regression, SHAP for explainability and scikit-learn for the pipeline.</li>
+          <li><strong>Data:</strong> SINAN (DATASUS, Brazil) for training; SIVIGILA Tuluá (Colombia) for external validation.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 5. Methodology + timeline -->
+    <section class="proj-section">
+      <div class="proj-head"><span class="step-badge">5</span> Methodology and development timeline</div>
+      <div class="proj-body">
+        <p>The project follows <strong>CRISP-DM</strong>. Evaluation uses a reserved 20% test set
+          ({{ "{:,}".format(info.data.n_test) }} cases) that is never used for training.
+          <a href="{{ url_for('methodology') }}">See each phase in detail.</a></p>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Phase</th><th>What is done</th><th class="text-end">Timeline</th></tr></thead>
+            <tbody>
+              {% for n, phase, what, when in [
+                (1, "Business understanding", "Define the clinical problem, the three diagnoses and the success criteria.", "Week 1"),
+                (2, "Data understanding", "Explore SINAN files: variables, classes and missing values.", "Weeks 2–3"),
+                (3, "Data preparation", "Clean, encode symptoms, findings, comorbidities, state and month.", "Weeks 3–4"),
+                (4, "Modeling", "Train and compare Logistic Regression, XGBoost and LightGBM; tune the dengue threshold.", "Weeks 5–6"),
+                (5, "Evaluation", "Test metrics, temporal validation, Colombian validation and SHAP analysis.", "Weeks 7–8"),
+                (6, "Deployment", "Flask web app with login, consultations, clinical history updates and deploy on Render.", "Weeks 9–10")] %}
+              <tr><td class="fw-semibold">{{ n }}. {{ phase }}</td><td class="small">{{ what }}</td><td class="text-end small text-muted">{{ when }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mt-2 mb-0">Timeline is indicative; adjust the weeks to your course calendar.</p>
+      </div>
+    </section>
+
+    <!-- 6. References -->
+    <section class="proj-section">
+      <div class="proj-head"><span class="step-badge">6</span> References <span class="opt">(optional)</span></div>
+      <div class="proj-body">
+        <ul class="small mb-0 refs">
+          <li>Chapman, P. et al. (2000). <em>CRISP-DM 1.0: Step-by-step data mining guide.</em></li>
+          <li>Lundberg, S. &amp; Lee, S.-I. (2017). A unified approach to interpreting model predictions. <em>NeurIPS 30.</em></li>
+          <li>Chen, T. &amp; Guestrin, C. (2016). XGBoost: a scalable tree boosting system. <em>KDD '16.</em></li>
+          <li>Ke, G. et al. (2017). LightGBM: a highly efficient gradient boosting decision tree. <em>NeurIPS 30.</em></li>
+          <li>Pedregosa, F. et al. (2011). Scikit-learn: machine learning in Python. <em>JMLR, 12.</em></li>
+          <li>World Health Organization (2009). <em>Dengue: guidelines for diagnosis, treatment, prevention and control.</em></li>
+          <li>Ministério da Saúde, Brasil. SINAN: Sistema de Informação de Agravos de Notificação (DATASUS).</li>
+          <li>Instituto Nacional de Salud, Colombia. SIVIGILA, datos.gov.co.</li>
+        </ul>
+      </div>
+    </section>
+
+    <p class="small text-muted mt-3 mb-0">Trained on {{ info.trained_at[:10] }} · scikit-learn {{ info.versions['scikit-learn'] }} ·
+      XGBoost {{ info.versions.xgboost }} · LightGBM {{ info.versions.lightgbm }}.</p>
   </div>
 
-  <div class="tab-pane fade {{ 'show active' if forecast_tab }}" id="tab-forecast" role="tabpanel">
+  <!-- ================= FORECAST ================= -->
+  <div class="tab-pane fade card p-3 p-md-4 {{ 'show active' if forecast_tab }}" id="tab-forecast" role="tabpanel">
     {% set f = forecast %}
     <form method="post" enctype="multipart/form-data" id="forecast-form">
       <div class="row g-4">
@@ -68,9 +198,7 @@
       <noscript><button type="submit" class="btn btn-brand mt-2">Update</button></noscript>
     </form>
 
-    {% if error %}
-      <div class="alert alert-danger mt-3 mb-0">{{ error }}</div>
-    {% endif %}
+    {% if error %}<div class="alert alert-danger mt-3 mb-0">{{ error }}</div>{% endif %}
     {% if not own_data %}
       <div class="alert alert-info mt-3 mb-0">Showing synthetic demo data. Upload a CSV to use real data.</div>
     {% endif %}
@@ -95,7 +223,6 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-  // As in Streamlit: when the file or slider changes, the forecast is recalculated automatically.
   const form = document.getElementById("forecast-form");
   const slider = document.getElementById("test_weeks");
   slider.addEventListener("input", () => document.getElementById("test-weeks-value").textContent = slider.value);
@@ -126,7 +253,6 @@
       },
     });
   }
-  // The chart is created when its tab is visible (a hidden canvas has no dimensions).
   document.querySelector('[data-bs-target="#tab-forecast"]').addEventListener("shown.bs.tab", draw);
   draw();
 </script>

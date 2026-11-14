@@ -5,13 +5,14 @@ Local: flask run --debug (http://127.0.0.1:5000)
 Production: gunicorn app:app
 """
 
-from urllib.parse import urlsplit
+import hmac
+import os
+from functools import wraps
 
-from flask import abort, current_app, flash, redirect, render_template, request, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+from flask import (abort, current_app, redirect, render_template, request,
+                   session, url_for)
 
 from src.app_factory import create_app
-from src.auth import HomeInfo, Worker, init_auth
 from src.database import Patient, db
 from src.methodology import PHASES, code_excerpts, get_phase
 from src.forecast import (TEST_WEEKS_DEFAULT, baseline_forecast, demo_series,
@@ -20,49 +21,57 @@ from src.preprocessing import CLASSES
 from src.validation import validate_patient
 
 app = create_app()
-init_auth(app)
-with app.app_context():
-    db.create_all()  # crea las tablas nuevas (Worker, HomeInfo) si no existen
+
+# --- Simple login (demo level) ---------------------------------------------
+# Change these with environment variables before deploying (e.g. in Render).
+app.config["SECRET_KEY"] = app.config.get("SECRET_KEY") or os.environ.get("SECRET_KEY", "dev-change-me")
+AUTH_USER = os.environ.get("APP_USER", "admin")
+AUTH_PASSWORD = os.environ.get("APP_PASSWORD", "dengue2026")
 
 
-# ----------------------------------------------------------------------------
-# Autenticación
-# ----------------------------------------------------------------------------
-def _is_safe_next(target):
-    """Solo se permite redirigir a rutas internas del sitio."""
-    return bool(target) and target.startswith("/") and not target.startswith("//") \
-        and not urlsplit(target).netloc
+def login_required(view):
+    """Redirect to /login when nobody is signed in."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("user"):
+            return redirect(url_for("login", next=request.full_path.rstrip("?")))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def safe_next(value):
+    """Only allow redirects to paths inside this site."""
+    return value if value.startswith("/") and not value.startswith("//") else ""
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("home"))
-    error = None
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        worker = db.session.scalar(db.select(Worker).where(Worker.username == username))
-        if worker and worker.check_password(request.form.get("password", "")):
-            login_user(worker)
-            nxt = request.args.get("next", "")
-            return redirect(nxt if _is_safe_next(nxt) else url_for("home"))
-        error = "Usuario o contraseña incorrectos."
-    return render_template("login.html", error=error), (401 if error else 200)
+    next_url = safe_next(request.values.get("next", ""))
+    if request.method == "GET":
+        return render_template("login.html", error=None, next_url=next_url, username="")
+
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    user_ok = hmac.compare_digest(username.encode(), AUTH_USER.encode())
+    pass_ok = hmac.compare_digest(password.encode(), AUTH_PASSWORD.encode())
+    if user_ok and pass_ok:
+        session.clear()
+        session["user"] = username
+        return redirect(next_url or url_for("home"))
+    return render_template("login.html", error="Incorrect username or password.",
+                           next_url=next_url, username=username), 401
 
 
 @app.route("/logout", methods=["POST"])
-@login_required
 def logout():
-    logout_user()
+    session.clear()
     return redirect(url_for("home"))
 
 
-# ----------------------------------------------------------------------------
-# Inicio
-# ----------------------------------------------------------------------------
+# --- Pages -------------------------------------------------------------------
 @app.route("/", methods=["GET", "POST"])
 def home():
-    """Home page: project structure + baseline forecast (tabs)."""
+    """Home page: model snapshot + baseline forecast (tabs)."""
     error, own_data, series = None, False, demo_series()
     if request.method == "POST":
         file = request.files.get("file")
@@ -77,38 +86,20 @@ def home():
     return render_template("home.html", document=project_document(), error=error,
                            forecast=baseline_forecast(series, test_weeks),
                            own_data=own_data, forecast_tab=request.method == "POST",
-                           home_info=db.session.get(HomeInfo, 1))
+                           info=current_app.extensions["predictor"].info)
 
 
-@app.route("/home/edit", methods=["GET", "POST"])
-@login_required
-def edit_home():
-    """El trabajador edita el título y el texto informativo del inicio."""
-    info = db.session.get(HomeInfo, 1)
-    if request.method == "POST":
-        if info is None:
-            info = HomeInfo(id=1)
-            db.session.add(info)
-        info.title = request.form.get("title", "").strip()
-        info.body = request.form.get("body", "").strip()
-        db.session.commit()
-        flash("Información del inicio actualizada.")
-        return redirect(url_for("home"))
-    return render_template("edit_home.html", info=info)
-
-
-# ----------------------------------------------------------------------------
-# Pacientes (solo trabajadores con sesión iniciada)
-# ----------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 @login_required
 def register():
     """Consultation form: patient data and clinical findings -> differential diagnosis."""
     if request.method == "GET":
         return render_template("register.html", values={}, errors={})
+
     data, errors = validate_patient(request.form)
     if errors:
         return render_template("register.html", values=request.form, errors=errors), 400
+
     findings = data["findings"]
     output = current_app.extensions["predictor"].predict(
         data["age"], data["sex"], data["days_since_onset"], findings, findings["state"], findings["month"])
@@ -119,39 +110,41 @@ def register():
     return redirect(url_for("result", patient_id=patient.id))
 
 
-@app.route("/patients/<int:patient_id>/edit", methods=["GET", "POST"])
-@login_required
-def edit_patient(patient_id):
-    """Actualiza los datos/hallazgos del paciente y recalcula el diagnóstico sugerido."""
-    patient = db.session.get(Patient, patient_id) or abort(404)
-
-    if request.method == "GET":
-        values = {"age": patient.age, "sex": patient.sex,
-                  "days_since_onset": patient.days_since_onset,
-                  **(patient.findings or {})}
-        return render_template("register.html", values=values, errors={}, editing=True)
-
-    data, errors = validate_patient(request.form)
-    if errors:
-        return render_template("register.html", values=request.form, errors=errors, editing=True), 400
-
-    findings = data["findings"]
-    output = current_app.extensions["predictor"].predict(
-        data["age"], data["sex"], data["days_since_onset"], findings, findings["state"], findings["month"])
-    for key, value in {**data, **output}.items():
-        setattr(patient, key, value)
-    db.session.commit()
-    flash("Paciente actualizado.")
-    return redirect(url_for("result", patient_id=patient.id))
-
-
 @app.route("/result/<int:patient_id>")
 @login_required
 def result(patient_id):
     patient = db.session.get(Patient, patient_id) or abort(404)
     return render_template("result.html", p=patient,
                            threshold=current_app.extensions["predictor"].dengue_threshold)
+@app.route("/patient/<int:patient_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_patient(patient_id):
+    """Update a patient's clinical history (new symptoms, findings, etc.) and re-run the model."""
+    patient = db.session.get(Patient, patient_id) or abort(404)
 
+    if request.method == "GET":
+        # Findings are stored with the same keys the form uses, so they pre-fill the checkboxes, state and month.
+        values = {
+            "name": patient.name, "document": patient.document, "age": patient.age,
+            "sex": patient.sex, "days_since_onset": patient.days_since_onset,
+            **(patient.findings or {}),
+        }
+        return render_template("register.html", values=values, errors={}, editing=True, patient=patient)
+
+    data, errors = validate_patient(request.form)
+    if errors:
+        return render_template("register.html", values=request.form, errors=errors,
+                               editing=True, patient=patient), 400
+
+    findings = data["findings"]
+    output = current_app.extensions["predictor"].predict(
+        data["age"], data["sex"], data["days_since_onset"], findings, findings["state"], findings["month"])
+
+    # Overwrite the stored data and the new prediction
+    for field, value in {**data, **output}.items():
+        setattr(patient, field, value)
+    db.session.commit()
+    return redirect(url_for("result", patient_id=patient.id))
 
 @app.route("/patients")
 @login_required
@@ -166,9 +159,6 @@ def patients():
     return render_template("patients.html", patients=db.session.scalars(query).all(), current_filter=current_filter)
 
 
-# ----------------------------------------------------------------------------
-# Páginas públicas
-# ----------------------------------------------------------------------------
 @app.route("/about")
 def about():
     return render_template("about.html", info=current_app.extensions["predictor"].info)

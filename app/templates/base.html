@@ -5,7 +5,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#c8372d">
-  <title>{% block title %}Arbovirus Dx{% endblock %} · Academic Project</title>
+  <title>{% block title %}Arbovirus Dx{% endblock %} · Arbovirus Dx</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c8372d'/%3E%3Cpath d='M16 6c4 5 7 8.5 7 12a7 7 0 0 1-14 0c0-3.5 3-7 7-12z' fill='white'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +18,7 @@
     Academic project · Clinical decision support only. It does not replace medical diagnosis.
   </div>
 
-  <nav class="navbar navbar-expand-md site-nav">
+  <nav class="navbar navbar-expand-md site-nav sticky-top">
     <div class="container">
       <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('home') }}">
         <span class="brand-mark">{{ icon("drop") }}</span> Arbovirus Dx
@@ -27,13 +28,24 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="menu">
-        <ul class="navbar-nav ms-auto gap-md-1 pt-2 pt-md-0">
+        <ul class="navbar-nav ms-auto align-items-md-center gap-md-1 pt-2 pt-md-0">
           {% set current = request.endpoint %}
           <li class="nav-item"><a class="nav-link {{ 'active' if current == 'home' }}" href="{{ url_for('home') }}">Home</a></li>
           <li class="nav-item"><a class="nav-link {{ 'active' if current in ('register', 'result') }}" href="{{ url_for('register') }}">New consultation</a></li>
           <li class="nav-item"><a class="nav-link {{ 'active' if current == 'patients' }}" href="{{ url_for('patients') }}">Consultations</a></li>
           <li class="nav-item"><a class="nav-link {{ 'active' if current == 'about' }}" href="{{ url_for('about') }}">About the model</a></li>
           <li class="nav-item"><a class="nav-link {{ 'active' if current in ('methodology', 'phase') }}" href="{{ url_for('methodology') }}">Methodology</a></li>
+          {% if session.get('user') %}
+          <li class="nav-item ms-md-2">
+            <form method="post" action="{{ url_for('logout') }}" class="d-inline">
+              <button type="submit" class="btn btn-sm btn-outline-brand">Log out</button>
+            </form>
+          </li>
+          {% else %}
+          <li class="nav-item ms-md-2">
+            <a class="btn btn-sm btn-brand" href="{{ url_for('login') }}">Sign in</a>
+          </li>
+          {% endif %}
         </ul>
       </div>
     </div>
