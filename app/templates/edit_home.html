@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Editar información del inicio</h1>
+<form method="post">
+  <p><label>Título<br><input name="title" value="{{ info.title if info else '' }}" required></label></p>
+  <p><label>Contenido<br><textarea name="body" rows="8" cols="70">{{ info.body if info else '' }}</textarea></label></p>
+  <button type="submit">Guardar</button>
+  <a href="{{ url_for('home') }}">Cancelar</a>
+</form>
+{% endblock %}
