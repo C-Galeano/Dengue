@@ -15,7 +15,18 @@ def client(tmp_path_factory):
     os.environ["DATABASE_URL"] = f"sqlite:///{tmp_path_factory.mktemp('db') / 'test.db'}"
     import app as app_module
     app_module.app.config["TESTING"] = True
-    return app_module.app.test_client()
+    client = app_module.app.test_client()
+    # Consultation pages require login (demo credentials, overridable with APP_USER / APP_PASSWORD).
+    response = client.post("/login", data={"username": app_module.AUTH_USER, "password": app_module.AUTH_PASSWORD})
+    assert response.status_code == 302
+    return client
+
+
+def test_consultation_pages_require_login(client):
+    anonymous = client.application.test_client()
+    response = anonymous.get("/register")
+    assert response.status_code == 302 and "/login" in response.headers["Location"]
+    assert anonymous.post("/login", data={"username": "x", "password": "y"}).status_code == 401
 
 
 def test_sinan_decoding():
@@ -45,14 +56,19 @@ def test_pages_load(client):
 
 
 def test_methodology_pages(client):
-    """The overview and one page per CRISP-DM phase, each with its explanation and real code."""
-    assert client.get("/methodology").status_code == 200
-    for number, name in enumerate(["Business Understanding", "Data Understanding", "Data Preparation",
-                                   "Modeling", "Evaluation", "Deployment"], start=1):
+    """The overview and one page per CRISP-ML(Q) phase, each with its explanation and real code."""
+    overview = client.get("/methodology")
+    assert overview.status_code == 200 and b"CRISP-ML(Q)" in overview.data
+    for number, name in enumerate(["Business and Data Understanding", "Data Engineering",
+                                   "Machine Learning Model Engineering", "Quality Assurance for ML Applications",
+                                   "Deployment", "Monitoring and Maintenance"], start=1):
         page = client.get(f"/methodology/{number}")
         assert page.status_code == 200
         assert name.encode() in page.data and b"What we did in this project" in page.data
-    assert b"def build_models" in client.get("/methodology/4").data
+        assert b"CRISP-DM" not in page.data
+    assert b"def build_models" in client.get("/methodology/3").data
+    monitoring = client.get("/methodology/6").data
+    assert b"def psi" in monitoring and b"Population Stability Index" in monitoring
     assert client.get("/methodology/7").status_code == 404
 
 
@@ -81,3 +97,13 @@ def test_forecast_accepts_csv_with_english_or_spanish_columns(client):
         response = client.post("/", data={"file": (io.BytesIO(body.encode()), "series.csv")},
                                content_type="multipart/form-data")
         assert response.status_code == 200 and b"Showing synthetic demo data" not in response.data
+
+
+def test_psi_detects_drift():
+    from src.monitoring import psi, psi_status
+    same = pd.Series([0, 1] * 500)
+    assert psi(same, same) < 0.01 and psi_status(psi(same, same)) == "stable"
+    shifted = pd.Series([1] * 900 + [0] * 100)
+    assert psi_status(psi(same, shifted)) == "significant"
+    ages = pd.Series(range(1000))
+    assert psi(ages, ages, numeric=True) < 0.01 and psi(ages, ages + 500, numeric=True) > 0.25

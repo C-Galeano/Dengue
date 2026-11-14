@@ -1,11 +1,11 @@
-"""CRISP-DM Phases 4 (Modeling) and 5 (Evaluation): arbovirus differential diagnosis.
+"""CRISP-ML(Q) Phases 3 (Model Engineering) and 4 (Quality Assurance): arbovirus differential diagnosis.
 
 Trains and compares classifiers that predict, for a febrile patient, whether the illness is DENGUE,
 CHIKUNGUNYA or ANOTHER FEBRILE ILLNESS, from age, sex, days since onset, symptoms, basic clinical and
 laboratory findings and comorbidities. Saves the best model to models/model.pkl and the results to
 models/metrics.json.
 
-Explained step by step in notebooks/04_modeling.ipynb and notebooks/05_evaluation.ipynb.
+Explained step by step in notebooks/03_model_engineering.ipynb and notebooks/04_quality_assurance.ipynb.
 
 Usage (needs the processed datasets; see src/sinan.py):
     python -m src.train

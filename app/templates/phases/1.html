@@ -1,15 +1,17 @@
 {% extends "phases/_layout.html" %}
-{% from "phases/_macros.html" import file_item, task %}
+{% from "phases/_macros.html" import file_item, task, metric %}
 
 {% block concept %}
-<p>Every data project starts from a <strong>business need</strong>, not from the data or the algorithm. This phase turns that
-  need into a precise objective that a model can solve, and fixes in advance how success will be measured, before any result
-  can bias the decision.</p>
+<p>CRISP-ML(Q) joins business and data understanding in one phase, because <strong>whether the data can support the goal
+  decides whether the project is feasible</strong>. The phase turns a need into a precise objective a model can solve, fixes in
+  advance how success will be measured (before any result can bias the decision), and checks that the data exist and are
+  reliable. <strong>No model is trained in this phase.</strong></p>
 <ul class="task-list">
-  {{ task("Determine the business objectives", "the problem, who suffers it and what a useful solution looks like.") }}
-  {{ task("Assess the situation", "available resources, constraints, risks and ethical aspects.") }}
-  {{ task("Determine the data-mining goals", "translate the business objective into a technical task (classification, forecasting…).") }}
-  {{ task("Produce a project plan", "phases, tools and deliverables.") }}
+  {{ task("Define the business objectives", "the problem, who suffers it and what a useful solution looks like.") }}
+  {{ task("Translate them into ML objectives", "the technical task (classification, forecasting…) and its success criteria.") }}
+  {{ task("Assess feasibility and risks", "resources, constraints, ethical aspects and how each risk will be checked.") }}
+  {{ task("Collect and describe the data", "find the sources, meaning of the codes, rows and columns.") }}
+  {{ task("Verify data quality", "missing classes, unreliable labels, leakage, inconsistent codes.") }}
 </ul>
 {% endblock %}
 
@@ -77,18 +79,74 @@
     </tbody>
   </table>
 </div>
+
+<hr class="my-4">
+<h3 class="h5">Data understanding</h3>
+<h3 class="h6 mt-4">Searching for data</h3>
+<p>The model needs, for each patient, <strong>clinical findings</strong> and a <strong>confirmed diagnosis</strong> among
+  several arboviruses. We reviewed the public sources:</p>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Source</th><th>Diseases</th><th>Symptoms</th><th>Lab</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>SIVIGILA Tuluá (Colombia)</td><td>Dengue only</td><td>Yes</td><td>Yes/no</td>
+          <td><span class="badge-soft is-ok">External validation</span></td></tr>
+      <tr><td>Medellín Zika and Chikungunya (Colombia)</td><td>Zika, Chik</td><td>No</td><td>No</td>
+          <td><span class="badge-soft is-probable">Not usable</span></td></tr>
+      <tr><td><strong>SINAN (Brazil, DATASUS)</strong></td><td>Dengue + Chik (same form); Zika separate</td><td>Yes (11)</td><td>Yes/no</td>
+          <td><span class="badge-soft is-ok">Training</span></td></tr>
+    </tbody>
+  </table>
+</div>
+<p class="small text-muted">SINAN files are <code>.dbc</code> (compressed dBase). The usual readers need a C compiler, so the
+  project includes its own pure-Python reader (<code>src/dbc.py</code>), shown below.</p>
+
+<div class="row g-3 my-3">
+  {{ metric("Records read", "3.8 M", "dengue + chik, 2023 and 2025") }}
+  {{ metric("Fields used", (info.features|length|string), "of 122 in the form") }}
+  {{ metric("Missing values", "0%", "in symptoms") }}
+  {{ metric("Platelet counts", "0%", "filled: not usable") }}
+</div>
+
+<h3 class="h6 mt-4">Key findings</h3>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Finding</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td>Dengue and chikungunya share the same notification form: identical symptoms, findings and comorbidities.</td>
+          <td>Their records can be combined into one dataset.</td></tr>
+      <tr><td>The Zika form has only 38 administrative columns, with <strong>no clinical fields</strong>.</td>
+          <td>Zika cannot be learned from symptoms: excluded.</td></tr>
+      <tr><td>Most cases are closed by <strong>clinical-epidemiological</strong> criterion, i.e. from the same symptoms.</td>
+          <td>Only <strong>laboratory</strong>-closed cases are used, so the label does not depend on the inputs.</td></tr>
+      <tr><td>Brazil's public dengue files contain <strong>no discarded cases</strong>.</td>
+          <td>"Other febrile illness" comes from chikungunya suspects ruled out by the laboratory.</td></tr>
+      <tr><td>Numeric lab values (<code>PLAQ_MENOR</code>, lowest platelet count) are empty in 100% of records.</td>
+          <td>Lab information enters as yes/no: leukopenia and tourniquet test.</td></tr>
+      <tr><td>Severity and warning-sign fields are filled only for dengue cases.</td>
+          <td>Excluded: they would reveal the label (data leakage).</td></tr>
+      <tr><td>Clear clinical signal: joint pain in 52% of chikungunya vs 16% of dengue; leukopenia twice as frequent in dengue.</td>
+          <td>Symptoms do carry information to separate the diseases.</td></tr>
+    </tbody>
+  </table>
+</div>
 {% endblock %}
 
 {% block outputs %}
 <ul class="output-list">
   <li>Business objective: arbovirus differential diagnosis</li>
-  <li>Data-mining goal: 3-class classifier + SHAP</li>
-  <li>Success criteria (dengue recall ≥ {{ (info.target_dengue_recall * 100)|int }}%)</li>
-  <li>Project plan: one notebook per phase</li>
+  <li>ML objective: 3-class classifier + SHAP</li>
+  <li>Success criteria (dengue recall ≥ {{ (info.target_dengue_recall * 100)|int }}%, macro ROC-AUC ≥ 0.80)</li>
+  <li>Inventory of public sources</li>
+  <li>Label-quality decision: laboratory criterion only</li>
+  <li>Classification of variables: use / exclude / leakage</li>
 </ul>
 {% endblock %}
 
 {% block files %}
-{{ file_item("docs/crisp_dm.md", "Summary of the six phases") }}
+{{ file_item("docs/crisp_ml.md", "Summary of the six phases") }}
 {{ file_item("docs/project_structure.md", "Original project proposal") }}
+{{ file_item("src/dbc.py", "Pure-Python reader of DATASUS .dbc files") }}
+{{ file_item("src/sinan.py", "Download and summary of SINAN files") }}
+{{ file_item("data/processed/arbovirus_2023_summary.json", "Raw counts by classification and criterion") }}
 {% endblock %}

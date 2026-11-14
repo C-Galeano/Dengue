@@ -1,84 +1,115 @@
 {% extends "phases/_layout.html" %}
-{% from "phases/_macros.html" import file_item, task %}
+{% from "phases/_macros.html" import file_item, task, metric %}
 
 {% block concept %}
-<p>A model creates value only when its users can apply it. Deployment can be as simple as a report or as complex as an
-  application integrated into daily work. It also includes planning how the model will be <strong>monitored and
-  maintained</strong>, because data change over time.</p>
+<p>A deployed model gets worse when the world changes: patients, disease circulation and data collection all drift over time.
+  CRISP-ML(Q) adds this phase so that the model is <strong>watched after deployment</strong>, with measurable signals and clear
+  rules for when to retrain. Its results start the next iteration of the cycle.</p>
 <ul class="task-list">
-  {{ task("Plan the deployment", "how the model reaches its users.") }}
-  {{ task("Plan monitoring and maintenance", "how to detect that the model is getting worse, and when to retrain.") }}
-  {{ task("Produce the final report", "documentation and presentation of the results.") }}
-  {{ task("Review the project", "lessons learned for the next iteration.") }}
+  {{ task("Monitor the data", "do new inputs still look like the training data? (data drift)") }}
+  {{ task("Monitor the environment", "has the mix of diseases changed? (prior drift)") }}
+  {{ task("Monitor performance", "does the model still meet the success criteria on new labeled cases?") }}
+  {{ task("Maintain", "retraining rules, schedule and the data needed for the next version.") }}
 </ul>
 {% endblock %}
 
 {% block implementation %}
-<h3 class="h6">A smart-hospital module for the first consultation</h3>
-<p>This Flask application <em>is</em> the deployment. The clinician registers a febrile patient and, in seconds, gets the
-  probability of each arbovirus, the suggested diagnosis, <strong>why</strong> the model suggests it, and the next steps.</p>
+{% if monitoring %}
+{% set m = monitoring %}
+{% set perf = m.performance %}
+<p>As a realistic test, the model trained on <strong>{{ m.reference_year }}</strong> is monitored with the surveillance data of
+  <strong>{{ m.current_year }}</strong>, as if two years had passed since deployment.</p>
 
-<div class="pipeline-flow mb-3" aria-label="Request flow">
-  <div class="flow-step"><strong>Consultation form</strong><span>age, sex, day of illness</span><span>symptoms, findings, comorbidities</span></div>
-  <div class="flow-step"><strong>Validation</strong><span>on the server</span></div>
-  <div class="flow-step"><strong>Model</strong><span>3 probabilities</span><span>dengue alert ≥ {{ info.dengue_threshold }}</span></div>
-  <div class="flow-step"><strong>SHAP</strong><span>top findings for the suggestion</span></div>
-  <div class="flow-step is-final"><strong>Result page</strong><span>diagnosis, explanation, next steps</span></div>
+<div class="row g-3 my-2">
+  {{ metric("Macro ROC-AUC " ~ m.reference_year, "%.2f" % perf.reference, "test set") }}
+  {{ metric("Macro ROC-AUC " ~ m.current_year, "%.2f" % perf.current, "target ≥ %.2f" % m.thresholds.min_roc_auc) }}
+  {{ metric("Largest PSI", "%.2f" % m.data_drift[0].psi, m.data_drift[0].label) }}
+  {{ metric("Decision", "Retrain" if m.decision.retrain else "Keep", "%d of %d rules fired" % (m.decision.rules|selectattr("fired")|list|length, m.decision.rules|length)) }}
 </div>
 
+<h3 class="h6 mt-4">1. Data drift: Population Stability Index</h3>
+<p class="small text-muted">PSI = Σ (current% − reference%) · ln(current% / reference%). Below {{ m.thresholds.psi_moderate }}
+  stable, up to {{ m.thresholds.psi_significant }} moderate, above it significant.</p>
 <div class="table-responsive">
   <table class="table table-sm align-middle">
-    <thead><tr><th>Page</th><th>Purpose</th></tr></thead>
+    <thead><tr><th>Feature</th><th class="text-end">PSI</th><th>Status</th></tr></thead>
     <tbody>
-      <tr><td><a href="{{ url_for('register') }}">/register</a></td><td>New consultation: patient data and clinical findings</td></tr>
-      <tr><td>/result/&lt;id&gt;</td><td>Probabilities, suggested diagnosis, SHAP explanation and suggested next steps</td></tr>
-      <tr><td><a href="{{ url_for('patients') }}">/patients</a></td><td>All consultations, filterable by suggested diagnosis</td></tr>
-      <tr><td><a href="{{ url_for('about') }}">/about</a></td><td>Model card: metrics, SHAP importance, validations and limitations</td></tr>
-      <tr><td><a href="{{ url_for('methodology') }}">/methodology</a></td><td>These CRISP-DM pages</td></tr>
+      {% for r in m.data_drift[:6] %}
+      <tr><td>{{ r.label }}</td><td class="text-end fw-semibold">{{ '%.3f' % r.psi }}</td>
+          <td><span class="badge-soft drift-{{ r.status }}">{{ r.status }}</span></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p>Symptoms, findings and comorbidities are stable: patients present the same way. What moved is <strong>where</strong>
+  lab-confirmed cases come from (state of residence) and, moderately, <strong>when</strong> (month). State of residence is the
+  model's most important feature, so this drift explains most of the drop in performance.</p>
+
+<h3 class="h6 mt-4">2. Prior drift: mix of lab-confirmed diagnoses</h3>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Diagnosis</th><th class="text-end">{{ m.reference_year }}</th><th class="text-end">{{ m.current_year }}</th><th class="text-end">Change</th></tr></thead>
+    <tbody>
+      {% for p in m.prior_drift %}
+      <tr><td><span class="badge-soft dx-badge dx-{{ p.class }}">{{ CLASS_LABELS[p.class] }}</span></td>
+          <td class="text-end">{{ '%.1f' % (p.reference * 100) }}%</td><td class="text-end">{{ '%.1f' % (p.current * 100) }}%</td>
+          <td class="text-end fw-semibold">{{ '%+.1f' % (p.change * 100) }} pp</td></tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
 
-<h3 class="h6 mt-4">Design decisions</h3>
-<ul>
-  <li><strong>Explanations without extra weight:</strong> XGBoost and LightGBM compute exact SHAP values natively, so the
-    server does not need the <code>shap</code> package.</li>
-  <li><strong>One artifact:</strong> <code>models/model.pkl</code> holds the model, threshold, labels and metrics; it is loaded
-    once at startup.</li>
-  <li><strong>Same features everywhere:</strong> <code>src/preprocessing.py</code> builds the patient row exactly like the training data.</li>
-  <li><strong>Flexible storage:</strong> findings, probabilities and explanations are saved as JSON, so adding a field does not
-    require a database migration. SQLite locally, PostgreSQL in production via <code>DATABASE_URL</code>.</li>
-  <li><strong>Server-side validation</strong> and <strong>Post/Redirect/Get</strong> (reloading never registers twice).</li>
-  <li><strong>Pinned versions</strong> of scikit-learn {{ info.versions['scikit-learn'] }}, XGBoost {{ info.versions.xgboost }}
-    and LightGBM {{ info.versions.lightgbm }}, the ones used in training.</li>
-  <li><strong>Mandatory notice</strong> on every page: decision support only.</li>
+<h3 class="h6 mt-4">3. Performance drift</h3>
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Diagnosis ({{ m.current_year }})</th><th class="text-end">ROC-AUC</th><th class="text-end">Recall</th></tr></thead>
+    <tbody>
+      {% for c in perf.per_class %}
+      <tr><td>{{ c.label }}</td><td class="text-end">{{ '%.2f' % c.roc_auc }}</td><td class="text-end">{{ '%.0f' % (c.recall * 100) }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h3 class="h6 mt-4">4. Retraining rules</h3>
+<ul class="list-unstyled">
+  {% for r in m.decision.rules %}
+  <li class="mb-2"><span class="badge-soft {{ 'drift-significant' if r.fired else 'drift-stable' }}">{{ 'fired' if r.fired else 'ok' }}</span>
+    {{ r.rule }} <span class="text-muted">· {{ r.value }}</span></li>
+  {% endfor %}
 </ul>
 
-<h3 class="h6 mt-4">Monitoring and maintenance</h3>
+<div class="callout mt-3">
+  <div class="callout-label">Decision</div>
+  {% if m.decision.retrain %}The rules fire: the model must be <strong>retrained with recent data</strong> before it is used for
+  {{ m.current_year }} patients.{% else %}No rule fires: the current model can stay in production.{% endif %}
+  The external validation in Colombia (Tuluá) adds a second reason: retrain with local data before using it there.
+</div>
+{% else %}
+<p class="text-muted">The monitoring report has not been generated. Run <code>python -m src.monitoring</code>.</p>
+{% endif %}
+
+<h3 class="h6 mt-4">Maintenance plan</h3>
 <ul class="mb-0">
-  <li><strong>Retrain</strong> each year with <code>python -m src.sinan</code> and <code>python -m src.train</code>. The current model
-    was trained on {{ info.trained_at[:10] }}.</li>
-  <li><strong>Watch for drift:</strong> compare the share of each suggested diagnosis with the circulation reported by the
-    surveillance system; a large gap means the model must be reviewed.</li>
+  <li><strong>Retrain</strong> when a rule fires and at least once a year: <code>python -m src.sinan</code>,
+    <code>python -m src.train</code>, then <code>python -m src.monitoring</code>. The current model was trained on
+    {{ info.trained_at[:10] }}.</li>
   <li><strong>Close the loop:</strong> store the laboratory result of each consultation, so the hospital builds its own labeled
-    dataset (with numeric lab values) for the next iteration.</li>
+    dataset (with numeric lab values) and the performance rule can be checked on local patients.</li>
+  <li><strong>Next iteration</strong> (back to Phase 1): numeric laboratory values, Colombian training data and a Zika class
+    once a source with clinical fields exists.</li>
 </ul>
 {% endblock %}
 
 {% block outputs %}
 <ul class="output-list">
-  <li>Web app: consultation, result with SHAP, history</li>
-  <li>Database of consultations</li>
-  <li>Render deployment configuration</li>
-  <li>Monitoring and retraining plan</li>
+  <li>Drift report: data, prior and performance</li>
+  <li>Retraining rules and decision</li>
+  <li>Maintenance plan and next iteration</li>
 </ul>
 {% endblock %}
 
 {% block files %}
-{{ file_item("app.py", "Routes") }}
-{{ file_item("src/prediction.py", "Model, decision rule and next steps") }}
-{{ file_item("src/explain.py", "Per-patient SHAP explanation") }}
-{{ file_item("src/validation.py", "Server-side form validation") }}
-{{ file_item("src/database.py", "Consultations table (SQLAlchemy)") }}
-{{ file_item("render.yaml", "Render deployment") }}
+{{ file_item("src/monitoring.py", "PSI, drift signals and retraining rules") }}
+{{ file_item("models/monitoring.json", "Latest monitoring report") }}
 {% endblock %}

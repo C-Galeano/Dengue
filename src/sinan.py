@@ -1,4 +1,4 @@
-"""CRISP-DM Phases 2–3: download Brazil's SINAN arbovirus microdata and build the modeling dataset.
+"""CRISP-ML(Q) Phases 1–2: download Brazil's SINAN arbovirus microdata and build the modeling dataset.
 
 Source: DATASUS (Brazilian Ministry of Health), SINAN final files, one per disease and year:
     DENGBR<yy>.dbc  dengue notifications        CHIKBR<yy>.dbc  chikungunya notifications

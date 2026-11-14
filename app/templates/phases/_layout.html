@@ -2,8 +2,8 @@
 {% from "_icons.html" import icon %}
 {% from "phases/_macros.html" import file_item %}
 {#
-  Shared layout of the six CRISP-DM phase pages. Each page (1.html … 6.html) fills:
-    - block concept:        what the phase is in CRISP-DM (generic tasks)
+  Shared layout of the six CRISP-ML(Q) phase pages. Each page (1.html … 6.html) fills:
+    - block concept:        what the phase is in CRISP-ML(Q) (generic tasks)
     - block implementation: how this project implements it (decisions and real results)
     - block outputs:        the phase deliverables (sidebar)
     - block files:          files of the repository that belong to the phase (sidebar)
@@ -19,12 +19,12 @@
   </ol>
 </nav>
 
-<ol class="phase-stepper mb-4" aria-label="CRISP-DM phases">
+<ol class="phase-stepper mb-4" aria-label="CRISP-ML(Q) phases">
   {% for p in phases %}
   <li class="{{ 'is-current' if p.number == phase.number else ('is-done' if p.number < phase.number) }}">
     <a href="{{ url_for('phase', number=p.number) }}" {{ 'aria-current="step"'|safe if p.number == phase.number }}>
       <span class="phase-dot">{{ p.number }}</span>
-      <span class="phase-step-name">{{ p.name }}</span>
+      <span class="phase-step-name">{{ p.short }}</span>
     </a>
   </li>
   {% endfor %}
@@ -33,7 +33,7 @@
 <header class="phase-header mb-4">
   <span class="icon-tile">{{ icon(phase.icon) }}</span>
   <div>
-    <div class="phase-kicker">CRISP-DM · Phase {{ phase.number }} of {{ phases|length }}</div>
+    <div class="phase-kicker">CRISP-ML(Q) · Phase {{ phase.number }} of {{ phases|length }}</div>
     <h1 class="h2 mb-1">{{ phase.name }}</h1>
     <p class="lead text-muted mb-0">{{ phase.question }}</p>
   </div>
@@ -43,7 +43,7 @@
   <div class="col-lg-8">
     <section class="card mb-4">
       <div class="card-body p-4">
-        <h2 class="h5 section-title"><span class="section-tag">The phase</span>What CRISP-DM asks for</h2>
+        <h2 class="h5 section-title"><span class="section-tag">The phase</span>What CRISP-ML(Q) asks for</h2>
         {% block concept %}{% endblock %}
       </div>
     </section>

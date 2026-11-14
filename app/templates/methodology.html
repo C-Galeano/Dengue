@@ -2,10 +2,12 @@
 {% from "_icons.html" import icon %}
 {% block title %}Methodology{% endblock %}
 {% block content %}
-<h1 class="h2 mb-1">Methodology: CRISP-DM</h1>
-<p class="text-muted mb-4" style="max-width: 70ch;">The project follows <strong>CRISP-DM</strong> (Cross-Industry Standard
-  Process for Data Mining), the most widely used process for data science projects. It has six phases. Each one has its own
-  page explaining what the phase is and how this project implements it, plus a notebook in <code>notebooks/</code>.</p>
+<h1 class="h2 mb-1">Methodology: CRISP-ML(Q)</h1>
+<p class="text-muted mb-4" style="max-width: 70ch;">The project follows <strong>CRISP-ML(Q)</strong> (CRoss-Industry Standard
+  Process for the development of Machine Learning applications with Quality assurance methodology; Studer et al., 2021). It
+  adapts CRISP-DM to machine learning: business and data understanding form one phase, every phase identifies its risks and how
+  to check them (the "Q"), and a final phase <strong>monitors and maintains</strong> the model after deployment. Each phase has
+  its own page explaining what the phase is and how this project implements it, plus a notebook in <code>notebooks/</code>.</p>
 
 <div class="row g-3 mb-4">
   {% for p in phases %}
@@ -31,13 +33,15 @@
 <div class="card">
   <div class="card-body p-4">
     <h2 class="h5">An iterative cycle</h2>
-    <p class="mb-2">CRISP-DM is not a straight line. In this project:</p>
+    <p class="mb-2">CRISP-ML(Q) is not a straight line. In this project:</p>
     <ul class="mb-0">
       <li><strong>Iteration 1:</strong> weekly dengue forecasting → binary dengue screening with Colombian data (Tuluá).</li>
-      <li><strong>Phase 5 → Phase 1:</strong> the evaluation judged the binary model too narrow. The objective was widened to a
-        "smart hospital" differential diagnosis among arboviruses, with explanations for the clinician.</li>
-      <li><strong>Phase 1 → Phase 2:</strong> no Colombian source has symptoms for Zika or chikungunya, so the data search moved to
+      <li><strong>Phase 4 → Phase 1:</strong> quality assurance judged the binary model too narrow (ROC-AUC ≈ 0.63). The objective
+        was widened to a "smart hospital" differential diagnosis among arboviruses, with explanations for the clinician.</li>
+      <li><strong>Within Phase 1:</strong> no Colombian source has symptoms for Zika or chikungunya, so the data search moved to
         Brazil's SINAN, and the Tuluá data became an external validation set.</li>
+      <li><strong>Phase 6 → Phase 1:</strong> monitoring with 2025 data shows drift in where cases come from, so the next
+        iteration retrains with recent and local data.</li>
     </ul>
   </div>
 </div>

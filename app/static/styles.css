@@ -310,3 +310,89 @@ a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
   .shap-row { grid-template-columns: 1fr 52px; }
   .shap-track { grid-column: 1 / -1; order: 3; }
 }
+/* ---------- Methodology phase pages (restored: lost when styles.css was replaced) ---------- */
+:root { --brand-softer: #fff6f5; --surface: #ffffff; --ok: #2f855a; }
+.icon-tile svg, .text-brand svg, .pager-card svg, .section-title svg { vertical-align: -.15em; }
+.text-brand svg, .pager-card svg { width: 1em; height: 1em; }
+.section-title svg { width: 1.1em; height: 1.1em; }
+.phase-kicker { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--brand); }
+.phase-header { display: flex; gap: 1rem; align-items: flex-start; }
+.phase-header .icon-tile { width: 52px; height: 52px; }
+.phase-header .lead { font-size: 1.05rem; }
+
+.phase-stepper { list-style: none; display: flex; gap: .35rem; padding: 0; margin: 0; overflow-x: auto; }
+.phase-stepper li { flex: 1 1 0; min-width: 0; }
+.phase-stepper a {
+  display: flex; align-items: center; gap: .5rem; padding: .55rem .7rem; border-radius: 12px;
+  text-decoration: none; color: var(--muted); background: var(--surface); border: 1px solid var(--line); height: 100%;
+}
+.phase-stepper a:hover { color: var(--ink); background: #f3efeb; }
+.phase-dot {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
+  font-size: .78rem; font-weight: 700; background: #efebe6; color: var(--muted);
+}
+.phase-step-name { font-size: .78rem; font-weight: 600; line-height: 1.2; }
+.phase-stepper .is-done .phase-dot { background: var(--brand-soft); color: var(--brand-dark); }
+.phase-stepper .is-current a { border-color: var(--brand); background: var(--brand-softer); color: var(--brand-dark); }
+.phase-stepper .is-current .phase-dot { background: var(--brand); color: #fff; }
+@media (max-width: 767.98px) {
+  .phase-stepper li { flex: 0 0 auto; }
+  .phase-stepper li:not(.is-current) .phase-step-name { display: none; }
+}
+
+.section-title { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.section-title .section-tag {
+  font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  padding: .25rem .6rem; border-radius: 999px; background: #eef0f3; color: #4b5563;
+}
+.section-title .section-tag.is-brand { background: var(--brand-soft); color: var(--brand-dark); }
+.phase-body h3 { margin-top: 1.25rem; }
+.phase-body h3:first-of-type { margin-top: 0; }
+
+.task-list { padding-left: 1.1rem; margin-bottom: 0; }
+.task-list li { margin-bottom: .35rem; }
+.task-list li::marker { color: var(--brand); }
+
+.callout { border-left: 4px solid var(--brand); background: var(--brand-softer); border-radius: 0 12px 12px 0; padding: .9rem 1.1rem; }
+.callout-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--brand-dark); margin-bottom: .25rem; }
+
+.mini-stat .note { font-size: .72rem; color: var(--muted); }
+
+.feature-chip { font-size: .78rem; font-weight: 500; padding: .3rem .7rem; border-radius: 999px; background: #f3efeb; }
+.badge-soft.is-ok { background: #e6f4ec; color: #1f6b43; }
+
+.pipeline-flow { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+.flow-step {
+  flex: 1 1 140px; display: flex; flex-direction: column; gap: .1rem; position: relative;
+  border: 1px solid var(--line); border-radius: 12px; padding: .7rem .9rem; background: #fbf9f7; font-size: .85rem;
+}
+.flow-step span { color: var(--muted); font-size: .76rem; }
+.flow-step.is-final { background: var(--brand-soft); border-color: #f1b9b4; }
+
+.algo-card { border: 1px solid var(--line); border-radius: 12px; padding: 1rem; }
+.algo-card.is-selected { border-color: var(--brand); background: var(--brand-softer); }
+
+.code-block { border: 1px solid #2b303b; border-radius: 12px; overflow: hidden; }
+.code-block figcaption {
+  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  background: #2b303b; color: #e8e6e3; font-size: .78rem; padding: .5rem .9rem;
+}
+.code-block figcaption span { color: #a7adba; font-family: var(--bs-font-monospace); }
+.code-block pre { margin: 0; max-height: 26rem; overflow: auto; background: #1f2430; color: #e8e6e3; padding: .9rem; font-size: .78rem; line-height: 1.55; }
+
+.phase-aside { position: sticky; top: 5.5rem; }
+.output-list { padding-left: 1.1rem; margin: 0; font-size: .9rem; }
+.output-list li { margin-bottom: .4rem; }
+.output-list li::marker { color: var(--ok); }
+.file-list { list-style: none; padding: 0; margin: 0; font-size: .85rem; }
+.file-list li { display: grid; grid-template-columns: 1.1rem 1fr; column-gap: .5rem; margin-bottom: .7rem; }
+.file-list svg { width: 1rem; height: 1rem; color: var(--muted); margin-top: .15rem; }
+.file-list a { font-family: var(--bs-font-monospace); font-size: .8rem; word-break: break-all; }
+.file-list span { grid-column: 2; color: var(--muted); font-size: .78rem; }
+
+.pager-card { padding: .9rem 1.1rem; display: flex; flex-direction: column; gap: .15rem; flex: 0 1 280px; height: auto; }
+
+/* Monitoring phase: drift status badges */
+.badge-soft.drift-stable { background: #e6f2ea; color: #2c6e49; }
+.badge-soft.drift-moderate { background: #fdf0dc; color: #8a5a12; }
+.badge-soft.drift-significant { background: #fbe4e1; color: #a1281d; }

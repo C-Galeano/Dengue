@@ -1,0 +1,285 @@
+{
+  "reference_year": 2023,
+  "current_year": 2025,
+  "thresholds": {
+    "psi_moderate": 0.1,
+    "psi_significant": 0.25,
+    "min_roc_auc": 0.8,
+    "max_prior_change": 0.05
+  },
+  "data_drift": [
+    {
+      "feature": "state",
+      "label": "State of residence",
+      "psi": 1.3893,
+      "status": "significant",
+      "reference": null,
+      "current": null
+    },
+    {
+      "feature": "month",
+      "label": "Month of consultation",
+      "psi": 0.1121,
+      "status": "moderate",
+      "reference": null,
+      "current": null
+    },
+    {
+      "feature": "myalgia",
+      "label": "Muscle pain",
+      "psi": 0.0146,
+      "status": "stable",
+      "reference": 0.737,
+      "current": 0.788
+    },
+    {
+      "feature": "headache",
+      "label": "Headache",
+      "psi": 0.0101,
+      "status": "stable",
+      "reference": 0.707,
+      "current": 0.752
+    },
+    {
+      "feature": "nausea",
+      "label": "Nausea",
+      "psi": 0.0079,
+      "status": "stable",
+      "reference": 0.344,
+      "current": 0.387
+    },
+    {
+      "feature": "hypertension",
+      "label": "Hypertension",
+      "psi": 0.0073,
+      "status": "stable",
+      "reference": 0.103,
+      "current": 0.131
+    },
+    {
+      "feature": "fever",
+      "label": "Fever",
+      "psi": 0.007,
+      "status": "stable",
+      "reference": 0.797,
+      "current": 0.83
+    },
+    {
+      "feature": "diabetes",
+      "label": "Diabetes",
+      "psi": 0.0046,
+      "status": "stable",
+      "reference": 0.045,
+      "current": 0.06
+    },
+    {
+      "feature": "vomiting",
+      "label": "Vomiting",
+      "psi": 0.0022,
+      "status": "stable",
+      "reference": 0.212,
+      "current": 0.232
+    },
+    {
+      "feature": "rash",
+      "label": "Skin rash",
+      "psi": 0.0021,
+      "status": "stable",
+      "reference": 0.148,
+      "current": 0.132
+    },
+    {
+      "feature": "days_since_onset",
+      "label": "Days since symptom onset",
+      "psi": 0.0016,
+      "status": "stable",
+      "reference": null,
+      "current": null
+    },
+    {
+      "feature": "age",
+      "label": "Age",
+      "psi": 0.0013,
+      "status": "stable",
+      "reference": null,
+      "current": null
+    },
+    {
+      "feature": "petechiae",
+      "label": "Petechiae (small red skin spots)",
+      "psi": 0.0013,
+      "status": "stable",
+      "reference": 0.09,
+      "current": 0.079
+    },
+    {
+      "feature": "arthralgia",
+      "label": "Joint pain",
+      "psi": 0.0011,
+      "status": "stable",
+      "reference": 0.352,
+      "current": 0.368
+    },
+    {
+      "feature": "conjunctivitis",
+      "label": "Red eyes (conjunctivitis)",
+      "psi": 0.0009,
+      "status": "stable",
+      "reference": 0.045,
+      "current": 0.039
+    },
+    {
+      "feature": "retro_orbital_pain",
+      "label": "Pain behind the eyes",
+      "psi": 0.0006,
+      "status": "stable",
+      "reference": 0.241,
+      "current": 0.252
+    },
+    {
+      "feature": "tourniquet_test",
+      "label": "Positive tourniquet test",
+      "psi": 0.0006,
+      "status": "stable",
+      "reference": 0.023,
+      "current": 0.02
+    },
+    {
+      "feature": "arthritis",
+      "label": "Joint swelling (arthritis)",
+      "psi": 0.0001,
+      "status": "stable",
+      "reference": 0.174,
+      "current": 0.171
+    },
+    {
+      "feature": "back_pain",
+      "label": "Back pain",
+      "psi": 0.0001,
+      "status": "stable",
+      "reference": 0.331,
+      "current": 0.336
+    },
+    {
+      "feature": "hematologic_disease",
+      "label": "Blood disorder",
+      "psi": 0.0001,
+      "status": "stable",
+      "reference": 0.005,
+      "current": 0.006
+    },
+    {
+      "feature": "peptic_ulcer",
+      "label": "Peptic ulcer",
+      "psi": 0.0001,
+      "status": "stable",
+      "reference": 0.005,
+      "current": 0.004
+    },
+    {
+      "feature": "autoimmune_disease",
+      "label": "Autoimmune disease",
+      "psi": 0.0001,
+      "status": "stable",
+      "reference": 0.007,
+      "current": 0.008
+    },
+    {
+      "feature": "sex_female",
+      "label": "Female sex",
+      "psi": 0.0,
+      "status": "stable",
+      "reference": null,
+      "current": null
+    },
+    {
+      "feature": "leukopenia",
+      "label": "Leukopenia (low white blood cells)",
+      "psi": 0.0,
+      "status": "stable",
+      "reference": 0.035,
+      "current": 0.035
+    },
+    {
+      "feature": "kidney_disease",
+      "label": "Chronic kidney disease",
+      "psi": 0.0,
+      "status": "stable",
+      "reference": 0.006,
+      "current": 0.005
+    },
+    {
+      "feature": "liver_disease",
+      "label": "Liver disease",
+      "psi": 0.0,
+      "status": "stable",
+      "reference": 0.006,
+      "current": 0.005
+    }
+  ],
+  "prior_drift": [
+    {
+      "class": "dengue",
+      "reference": 0.851,
+      "current": 0.774,
+      "change": -0.0769
+    },
+    {
+      "class": "chikungunya",
+      "reference": 0.0731,
+      "current": 0.0973,
+      "change": 0.0242
+    },
+    {
+      "class": "other_febrile",
+      "reference": 0.0759,
+      "current": 0.1287,
+      "change": 0.0528
+    }
+  ],
+  "performance": {
+    "reference": 0.8578,
+    "current": 0.7601,
+    "per_class": [
+      {
+        "class": "dengue",
+        "label": "Dengue",
+        "roc_auc": 0.8096,
+        "recall": 0.8659
+      },
+      {
+        "class": "chikungunya",
+        "label": "Chikungunya",
+        "roc_auc": 0.7078,
+        "recall": 0.2116
+      },
+      {
+        "class": "other_febrile",
+        "label": "Other febrile illness",
+        "roc_auc": 0.7629,
+        "recall": 0.55
+      }
+    ]
+  },
+  "decision": {
+    "rules": [
+      {
+        "rule": "Macro ROC-AUC on new data below 0.80",
+        "value": "0.76",
+        "fired": true
+      },
+      {
+        "rule": "Significant drift (PSI > 0.25) in one of the top-5 SHAP features",
+        "value": "State of residence",
+        "fired": true
+      },
+      {
+        "rule": "Share of a diagnosis changes by more than 5 percentage points",
+        "value": "dengue, other_febrile",
+        "fired": true
+      }
+    ],
+    "retrain": true
+  },
+  "model_trained_at": "2026-11-11T21:57:03"
+}

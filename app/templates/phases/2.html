@@ -2,79 +2,83 @@
 {% from "phases/_macros.html" import file_item, task, metric %}
 
 {% block concept %}
-<p>Before modeling, we must know the data: what each column means, how complete and reliable it is, and which variables could
-  explain the target. Problems found here (missing classes, leakage, unreliable labels) shape every later phase.
-  <strong>No model is trained in this phase.</strong></p>
+<p>Raw data are rarely ready for a model. This phase builds the final dataset: it selects rows and columns, cleans and
+  transforms values, and defines the target. It usually takes most of the project time, and mistakes here (especially
+  <strong>data leakage</strong>) make any later result unreliable, so CRISP-ML(Q) asks to check data quality as part of the phase.</p>
 <ul class="task-list">
-  {{ task("Collect the initial data", "find and download the sources.") }}
-  {{ task("Describe the data", "rows, columns, types and meaning of the codes.") }}
-  {{ task("Explore the data", "distributions and relationships with the target.") }}
-  {{ task("Verify data quality", "missing values, unreliable labels, inconsistent codes.") }}
+  {{ task("Select the data", "which rows and which columns enter the model.") }}
+  {{ task("Clean the data", "invalid codes, impossible ages, missing values.") }}
+  {{ task("Construct the data", "derived variables, the target and, if needed, class balancing.") }}
+  {{ task("Standardize the data", "one table with the same feature definitions in training and in the app.") }}
 </ul>
 {% endblock %}
 
 {% block implementation %}
-<h3 class="h6">Searching for data</h3>
-<p>The model needs, for each patient, <strong>clinical findings</strong> and a <strong>confirmed diagnosis</strong> among
-  several arboviruses. We reviewed the public sources:</p>
+<h3 class="h6">1. Target variable (laboratory criterion only)</h3>
 <div class="table-responsive">
-  <table class="table table-sm align-middle">
-    <thead><tr><th>Source</th><th>Diseases</th><th>Symptoms</th><th>Lab</th><th>Use</th></tr></thead>
+  <table class="table table-sm">
+    <thead><tr><th>Class</th><th>SINAN rule</th></tr></thead>
     <tbody>
-      <tr><td>SIVIGILA Tuluá (Colombia)</td><td>Dengue only</td><td>Yes</td><td>Yes/no</td>
-          <td><span class="badge-soft is-ok">External validation</span></td></tr>
-      <tr><td>Medellín Zika and Chikungunya (Colombia)</td><td>Zika, Chik</td><td>No</td><td>No</td>
-          <td><span class="badge-soft is-probable">Not usable</span></td></tr>
-      <tr><td><strong>SINAN (Brazil, DATASUS)</strong></td><td>Dengue + Chik (same form); Zika separate</td><td>Yes (11)</td><td>Yes/no</td>
-          <td><span class="badge-soft is-ok">Training</span></td></tr>
+      <tr><td><span class="badge-soft dx-badge dx-dengue">Dengue</span></td>
+          <td>Final classification 10, 11 or 12 (dengue, with warning signs, severe) · criterion = laboratory</td></tr>
+      <tr><td><span class="badge-soft dx-badge dx-chikungunya">Chikungunya</span></td>
+          <td>Final classification 13 · criterion = laboratory</td></tr>
+      <tr><td><span class="badge-soft dx-badge dx-other_febrile">Other febrile illness</span></td>
+          <td>Final classification 5 (discarded) · criterion = laboratory</td></tr>
     </tbody>
   </table>
 </div>
-<p class="small text-muted">SINAN files are <code>.dbc</code> (compressed dBase). The usual readers need a C compiler, so the
-  project includes its own pure-Python reader (<code>src/dbc.py</code>), shown below.</p>
 
-<div class="row g-3 my-3">
-  {{ metric("Records read", "3.8 M", "dengue + chik, 2023 and 2025") }}
-  {{ metric("Fields used", (info.features|length|string), "of 122 in the form") }}
-  {{ metric("Missing values", "0%", "in symptoms") }}
-  {{ metric("Platelet counts", "0%", "filled: not usable") }}
+<h3 class="h6 mt-4">2. Features ({{ info.features|length }})</h3>
+{% for group, items in BINARY_GROUPS.items() %}
+<div class="small text-muted mb-1">{{ group }}</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  {% for key, (column, label) in items.items() %}<span class="feature-chip" title="SINAN column {{ column }}">{{ label }}</span>{% endfor %}
 </div>
+{% endfor %}
+<div class="small text-muted mb-1">Derived</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="feature-chip">Age in years (decoded from <code>NU_IDADE_N</code>)</span>
+  <span class="feature-chip">Days since onset (notification − first symptom)</span>
+  <span class="feature-chip">Female sex</span>
+</div>
+<div class="small text-muted mb-1">Epidemiological context</div>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="feature-chip">State of residence (<code>SG_UF</code>)</span>
+  <span class="feature-chip">Month of consultation</span>
+</div>
+<div class="callout mb-3">
+  <div class="callout-label">Second iteration of this phase</div>
+  With clinical features only, the macro ROC-AUC was about <strong>0.71</strong>, below the 0.80 target. Exploration (Phase 1)
+  had shown that chikungunya concentrates in a few states and that circulation changes by month. Adding <strong>where and
+  when</strong> the patient consults — the local pre-test probability a clinician already uses — raised it above 0.80.
+  Caveat: part of the state effect may reflect each state's laboratory practices.
+</div>
+<p>SINAN codes yes/no as <code>1 = Yes, 2 = No</code>; they become 1/0. Ages outside 0–110 and onset intervals outside
+  0–30 days become missing. All features are numeric, so tree models need no encoding.</p>
 
-<h3 class="h6 mt-4">Key findings</h3>
-<div class="table-responsive">
-  <table class="table table-sm align-middle">
-    <thead><tr><th>Finding</th><th>Consequence</th></tr></thead>
-    <tbody>
-      <tr><td>Dengue and chikungunya share the same notification form: identical symptoms, findings and comorbidities.</td>
-          <td>Their records can be combined into one dataset.</td></tr>
-      <tr><td>The Zika form has only 38 administrative columns, with <strong>no clinical fields</strong>.</td>
-          <td>Zika cannot be learned from symptoms: excluded.</td></tr>
-      <tr><td>Most cases are closed by <strong>clinical-epidemiological</strong> criterion, i.e. from the same symptoms.</td>
-          <td>Only <strong>laboratory</strong>-closed cases are used, so the label does not depend on the inputs.</td></tr>
-      <tr><td>Brazil's public dengue files contain <strong>no discarded cases</strong>.</td>
-          <td>"Other febrile illness" comes from chikungunya suspects ruled out by the laboratory.</td></tr>
-      <tr><td>Numeric lab values (<code>PLAQ_MENOR</code>, lowest platelet count) are empty in 100% of records.</td>
-          <td>Lab information enters as yes/no: leukopenia and tourniquet test.</td></tr>
-      <tr><td>Severity and warning-sign fields are filled only for dengue cases.</td>
-          <td>Excluded: they would reveal the label (data leakage).</td></tr>
-      <tr><td>Clear clinical signal: joint pain in 52% of chikungunya vs 16% of dengue; leukopenia twice as frequent in dengue.</td>
-          <td>Symptoms do carry information to separate the diseases.</td></tr>
-    </tbody>
-  </table>
+<h3 class="h6 mt-4">3. Balanced samples</h3>
+<p>Laboratory-confirmed dengue is ten times more frequent than the other classes. A random sample of
+  <strong>equal size per class</strong> keeps the model from learning only "dengue is the most common", and makes the
+  probabilities comparable across diagnoses.</p>
+<div class="row g-3 mt-1">
+  {% for c in info.classes %}
+  {{ metric(info.class_labels[c], "{:,}".format(info.data.class_counts[c]), "cases " ~ info.data.year) }}
+  {% endfor %}
+  {{ metric("Temporal set", info.data.validation_year|string, "separate balanced sample") }}
 </div>
 {% endblock %}
 
 {% block outputs %}
 <ul class="output-list">
-  <li>Inventory of public sources</li>
-  <li>SINAN data dictionary and code meanings</li>
-  <li>Label-quality decision: laboratory criterion only</li>
-  <li>Classification of variables: use / exclude / leakage</li>
+  <li><code>data/processed/arbovirus_{{ info.data.year }}.parquet</code>: training set</li>
+  <li><code>data/processed/arbovirus_{{ info.data.validation_year }}.parquet</code>: temporal validation set</li>
+  <li>Shared feature definitions for training and the app</li>
 </ul>
 {% endblock %}
 
 {% block files %}
-{{ file_item("src/dbc.py", "Pure-Python reader of DATASUS .dbc files") }}
-{{ file_item("src/sinan.py", "Download and summary of SINAN files") }}
-{{ file_item("data/processed/arbovirus_2023_summary.json", "Raw counts by classification and criterion") }}
+{{ file_item("src/sinan.py", "Labels, features and balanced sampling") }}
+{{ file_item("src/preprocessing.py", "Feature definitions and decoding") }}
+{{ file_item("src/tulua.py", "Colombian data mapped to the same features") }}
 {% endblock %}

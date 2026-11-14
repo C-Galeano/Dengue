@@ -15,6 +15,7 @@ from flask import (abort, current_app, redirect, render_template, request,
 from src.app_factory import create_app
 from src.database import Patient, db
 from src.methodology import PHASES, code_excerpts, get_phase
+from src.monitoring import load_report
 from src.forecast import (TEST_WEEKS_DEFAULT, baseline_forecast, demo_series,
                           project_document, read_series)
 from src.preprocessing import CLASSES
@@ -166,13 +167,14 @@ def about():
 
 @app.route("/methodology")
 def methodology():
-    """Overview of the six CRISP-DM phases."""
+    """Overview of the six CRISP-ML(Q) phases."""
     return render_template("methodology.html", phases=PHASES)
 
 
 @app.route("/methodology/<int:number>")
 def phase(number):
-    """One page per CRISP-DM phase: what the phase is and how this project implements it."""
+    """One page per CRISP-ML(Q) phase: what the phase is and how this project implements it."""
     current = get_phase(number) or abort(404)
     return render_template(f"phases/{number}.html", phase=current, phases=PHASES,
-                           code=code_excerpts(number), info=current_app.extensions["predictor"].info)
+                           code=code_excerpts(number), info=current_app.extensions["predictor"].info,
+                           monitoring=load_report() if number == 6 else None)

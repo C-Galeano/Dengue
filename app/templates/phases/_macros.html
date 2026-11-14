@@ -1,12 +1,12 @@
 {% from "_icons.html" import icon %}
-{# Helpers for the CRISP-DM phase pages. #}
+{# Helpers for the CRISP-ML(Q) phase pages. #}
 
 {# One file of the repository, linked to GitHub. #}
 {% macro file_item(path, description) -%}
 <li>{{ icon("file") }}<a href="https://github.com/C-Galeano/Dengue/blob/main/{{ path }}" target="_blank" rel="noopener">{{ path }}</a><span>{{ description }}</span></li>
 {%- endmacro %}
 
-{# A generic CRISP-DM task with its description. #}
+{# A generic CRISP-ML(Q) task with its description. #}
 {% macro task(name, description) -%}
 <li><strong>{{ name }}</strong> — {{ description }}</li>
 {%- endmacro %}

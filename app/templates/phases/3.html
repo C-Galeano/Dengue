@@ -1,84 +1,87 @@
 {% extends "phases/_layout.html" %}
-{% from "phases/_macros.html" import file_item, task, metric %}
+{% from "phases/_macros.html" import file_item, task %}
 
 {% block concept %}
-<p>Raw data are rarely ready for a model. This phase builds the final dataset: it selects rows and columns, cleans and
-  transforms values, and defines the target. It usually takes most of the project time, and mistakes here (especially
-  <strong>data leakage</strong>) make any later result unreliable.</p>
+<p>This phase selects modeling techniques, defines how they will be tested and trains them. Several algorithms are usually
+  compared, because the best one cannot be known in advance. CRISP-ML(Q) asks to fix the test design <strong>before</strong>
+  training and to keep the model reproducible (code, data version and library versions), so the quality checks of the next
+  phase stay honest.</p>
 <ul class="task-list">
-  {{ task("Select the data", "which rows and which columns enter the model.") }}
-  {{ task("Clean the data", "invalid codes, impossible ages, missing values.") }}
-  {{ task("Construct the data", "derived variables and the target.") }}
-  {{ task("Integrate and format", "combine sources into one table the algorithms can use.") }}
+  {{ task("Define quality measures", "metrics and the decision rule that matter for the use case.") }}
+  {{ task("Select the techniques", "candidate algorithms and a simple baseline.") }}
+  {{ task("Generate a test design", "how models are trained, validated and compared.") }}
+  {{ task("Train and compare", "training, parameter settings and selection; ensure reproducibility.") }}
 </ul>
 {% endblock %}
 
 {% block implementation %}
-<h3 class="h6">1. Target variable (laboratory criterion only)</h3>
+<h3 class="h6">Test design</h3>
+<ul>
+  <li><strong>80% training / 20% test</strong>, stratified by diagnosis. The test set is not touched until Phase 4.</li>
+  <li><strong>5-fold stratified cross-validation</strong> on the training set to compare models.</li>
+  <li><strong>Selection metric: macro ROC-AUC (one-vs-rest)</strong>, the average of "dengue vs rest", "chikungunya vs rest"
+    and "other vs rest". It does not depend on any threshold. Ties within 0.005 are broken by the lower log-loss
+    (better-calibrated probabilities).</li>
+</ul>
+
+<h3 class="h6 mt-4">Candidate algorithms</h3>
+<div class="row g-3 mb-3">
+  {% for name, text in [
+      ("Logistic Regression", "Linear baseline. If tree models cannot beat it, their complexity is not justified."),
+      ("Random Forest", "Hundreds of decision trees trained on random samples that vote. Robust and captures interactions."),
+      ("XGBoost", "Gradient boosting: trees trained in sequence, each correcting the previous errors. Regularized; a standard in clinical tabular data."),
+      ("LightGBM", "Gradient boosting with leaf-wise growth and histograms: as accurate as XGBoost and faster.")] %}
+  <div class="col-md-6">
+    <div class="algo-card h-100 {{ 'is-selected' if name == info.model_name }}">
+      <div class="d-flex justify-content-between align-items-start mb-1">
+        <strong>{{ name }}</strong>
+        {% if name == info.model_name %}<span class="badge-soft is-probable">Selected</span>
+        {% elif name == "Logistic Regression" %}<span class="badge-soft">Baseline</span>{% endif %}
+      </div>
+      <p class="small text-muted mb-0">{{ text }}</p>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="small text-muted">Tree models work directly on the numeric and 0/1 features and handle missing values natively.
+  XGBoost and LightGBM also compute exact SHAP values natively, which the web app uses for its explanations.</p>
+
+<h3 class="h6 mt-4">Cross-validation results</h3>
 <div class="table-responsive">
   <table class="table table-sm">
-    <thead><tr><th>Class</th><th>SINAN rule</th></tr></thead>
+    <thead><tr><th>Model</th><th class="text-end">ROC-AUC</th><th class="text-end">Balanced acc.</th><th class="text-end">F1 macro</th><th class="text-end">Log-loss</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge-soft dx-badge dx-dengue">Dengue</span></td>
-          <td>Final classification 10, 11 or 12 (dengue, with warning signs, severe) · criterion = laboratory</td></tr>
-      <tr><td><span class="badge-soft dx-badge dx-chikungunya">Chikungunya</span></td>
-          <td>Final classification 13 · criterion = laboratory</td></tr>
-      <tr><td><span class="badge-soft dx-badge dx-other_febrile">Other febrile illness</span></td>
-          <td>Final classification 5 (discarded) · criterion = laboratory</td></tr>
+      {% for m in info.cv_metrics %}
+      <tr class="{{ 'table-active fw-semibold' if m.model == info.model_name }}">
+        <td>{{ m.model }}</td>
+        {% for k in ["roc_auc", "balanced_accuracy", "f1_macro", "log_loss"] %}
+        <td class="text-end">{{ '%.3f' % m[k] }} <span class="text-muted small">± {{ '%.3f' % m[k ~ '_std'] }}</span></td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
 
-<h3 class="h6 mt-4">2. Features ({{ info.features|length }})</h3>
-{% for group, items in BINARY_GROUPS.items() %}
-<div class="small text-muted mb-1">{{ group }}</div>
-<div class="d-flex flex-wrap gap-2 mb-3">
-  {% for key, (column, label) in items.items() %}<span class="feature-chip" title="SINAN column {{ column }}">{{ label }}</span>{% endfor %}
-</div>
-{% endfor %}
-<div class="small text-muted mb-1">Derived</div>
-<div class="d-flex flex-wrap gap-2 mb-3">
-  <span class="feature-chip">Age in years (decoded from <code>NU_IDADE_N</code>)</span>
-  <span class="feature-chip">Days since onset (notification − first symptom)</span>
-  <span class="feature-chip">Female sex</span>
-</div>
-<div class="small text-muted mb-1">Epidemiological context</div>
-<div class="d-flex flex-wrap gap-2 mb-3">
-  <span class="feature-chip">State of residence (<code>SG_UF</code>)</span>
-  <span class="feature-chip">Month of consultation</span>
-</div>
-<div class="callout mb-3">
-  <div class="callout-label">Second iteration of this phase</div>
-  With clinical features only, the macro ROC-AUC was about <strong>0.71</strong>, below the 0.80 target. Exploration (Phase 2)
-  had shown that chikungunya concentrates in a few states and that circulation changes by month. Adding <strong>where and
-  when</strong> the patient consults — the local pre-test probability a clinician already uses — raised it above 0.80.
-  Caveat: part of the state effect may reflect each state's laboratory practices.
-</div>
-<p>SINAN codes yes/no as <code>1 = Yes, 2 = No</code>; they become 1/0. Ages outside 0–110 and onset intervals outside
-  0–30 days become missing. All features are numeric, so tree models need no encoding.</p>
-
-<h3 class="h6 mt-4">3. Balanced samples</h3>
-<p>Laboratory-confirmed dengue is ten times more frequent than the other classes. A random sample of
-  <strong>equal size per class</strong> keeps the model from learning only "dengue is the most common", and makes the
-  probabilities comparable across diagnoses.</p>
-<div class="row g-3 mt-1">
-  {% for c in info.classes %}
-  {{ metric(info.class_labels[c], "{:,}".format(info.data.class_counts[c]), "cases " ~ info.data.year) }}
-  {% endfor %}
-  {{ metric("Temporal set", info.data.validation_year|string, "separate balanced sample") }}
+<h3 class="h6 mt-4">Decision rule: the dengue alert</h3>
+<p>The plain rule "suggest the most likely diagnosis" treats all errors as equal. They are not: sending a dengue patient home
+  as "chikungunya" may mean NSAIDs and no follow-up of warning signs.</p>
+<div class="callout">
+  <div class="callout-label">Rule</div>
+  Suggest <strong>dengue</strong> whenever P(dengue) ≥ <strong>{{ info.dengue_threshold }}</strong>; otherwise, the most likely
+  diagnosis. The threshold is the highest one that reaches dengue recall ≥ {{ (info.target_dengue_recall * 100)|int }}% on
+  <em>out-of-fold</em> predictions of the training set (never the test set).
 </div>
 {% endblock %}
 
 {% block outputs %}
 <ul class="output-list">
-  <li><code>data/processed/arbovirus_{{ info.data.year }}.parquet</code>: training set</li>
-  <li><code>data/processed/arbovirus_{{ info.data.validation_year }}.parquet</code>: temporal validation set</li>
-  <li>Shared feature definitions for training and the app</li>
+  <li>Comparison of four algorithms</li>
+  <li>Selected model: <strong>{{ info.model_name }}</strong></li>
+  <li>Dengue alert threshold: <strong>{{ info.dengue_threshold }}</strong></li>
 </ul>
 {% endblock %}
 
 {% block files %}
-{{ file_item("src/sinan.py", "Labels, features and balanced sampling") }}
-{{ file_item("src/preprocessing.py", "Feature definitions and decoding") }}
-{{ file_item("src/tulua.py", "Colombian data mapped to the same features") }}
+{{ file_item("src/train.py", "Models, cross-validation, selection and decision rule") }}
 {% endblock %}
