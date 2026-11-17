@@ -22,6 +22,24 @@
   </div>
 </section>
 
+<!-- Project demo video (YouTube, privacy-enhanced mode: no cookies until the video is played) -->
+<section class="card mb-4">
+  <div class="card-body p-4">
+    <h2 class="h5 mb-1">Project demonstration</h2>
+    <p class="small text-muted mb-3">Video walkthrough of the system: the model, the clinical workflow and how the results are used.</p>
+    <div class="ratio ratio-16x9 rounded overflow-hidden">
+      <iframe src="https://www.youtube-nocookie.com/embed/UvoqZbDg7pI?rel=0"
+              title="Arbovirus Dx project demonstration video"
+              loading="lazy" allowfullscreen
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+    <p class="small text-muted mt-2 mb-0">
+      <a href="https://youtu.be/UvoqZbDg7pI" target="_blank" rel="noopener">Watch on YouTube</a> · 27 min
+    </p>
+  </div>
+</section>
+
 <div class="row g-3 mb-4">
   {% for label, value, note in [
       ("Model", info.model_name, "Best of the compared models"),
